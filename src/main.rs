@@ -2,7 +2,9 @@ use colored::Colorize;
 use my_first_compiler::lexer_base::lexer;
 use my_first_compiler::lexer_base::token::Token;
 use my_first_compiler::parser_base::parser;
+
 use std::fs;
+use walkdir::WalkDir;
 
 fn test_lexer(input_path: &str) -> Result<Vec<Token>, String> {
     println!("Lexing file: {}", input_path.green());
@@ -14,17 +16,14 @@ fn test_lexer(input_path: &str) -> Result<Vec<Token>, String> {
             Err(e)
         }
         Ok(tokens) => {
-            for token in &tokens {
-                println!("{:?}", token);
-            }
+            println!("Lexing passed.");
             Ok(tokens)
         }
-        
     };
 }
 
 #[allow(unused_variables)]
-fn test_parser(lexer_result: Vec<Token>) -> Result<(), String> { 
+fn test_parser(lexer_result: Vec<Token>) -> Result<(), String> {
     println!("Parsing tokens...");
     return match parser::parse(&lexer_result) {
         Err(e) => {
@@ -35,26 +34,27 @@ fn test_parser(lexer_result: Vec<Token>) -> Result<(), String> {
             println!("Parsed AST: {:?}", ast);
             Ok(())
         }
-        
     };
 }
 
 fn main() {
-    let lexer_input_paths = vec![
-        "tests/Ch1/valid/return_0.c",
-        "tests/Ch1/valid/return_2.c",
-        "tests/Ch1/valid/spaces.c",
-        "tests/Ch1/valid/multi_digit.c",
-        "tests/Ch1/invalid/at_sign.c",
-        "tests/Ch1/invalid/backslash.c",
-        "tests/Ch1/invalid/invalid_identifier.c",
-        "tests/Ch1/invalid/invalid_identifier_2.c",
-    ];
-    for path in lexer_input_paths {
-        if let Ok(tokens) = test_lexer(path) {
-            if let Ok(_) = test_parser(tokens) {
-                todo!()
+    let test_root = "tests/Ch1";
+    for entry in WalkDir::new(test_root)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().is_file() && e.path().extension().map_or(false, |ext| ext == "c"))
+    {
+        let path_str = entry.path().to_str().unwrap();
+        println!("==============================");
+        println!("Testing file: {}", path_str.blue().bold());
+        match test_lexer(path_str) {
+            Ok(tokens) => {
+                let _ = test_parser(tokens);
+            }
+            Err(_) => {
+                // Lexer error already printed
             }
         }
+        println!("==============================\n");
     }
 }
