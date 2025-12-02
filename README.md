@@ -3,7 +3,7 @@
 **Writing a C Compiler(Build a real programming language from scratch)** - Nora Sandler
 We will do this in <span style="color:#B94700">_Rust_</span>
 
-## A High-Level Overview
+## Part 0 : A High-Level Overview
 `Compiler` : Program that translates code from one programming language to another
 `Assembler` : Program that translates assembly into `object files`
 `Linker` : Combines all object files to make one final `executable` program.
