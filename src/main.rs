@@ -1,6 +1,6 @@
 use std::fs;
 use colored::Colorize;
-pub mod lexer;
+use my_first_compiler::lexer_base::lexer;
 
 fn test_lexer(input_path: &str) {
     println!("Lexing file: {}", input_path.green());
