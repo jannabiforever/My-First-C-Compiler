@@ -6,8 +6,9 @@ use crate::{
 };
 use regex::Regex;
 
-static INTEGER_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[0-9]+").unwrap());
-static IDENTIFIER_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[a-zA-Z_]\w*").unwrap());
+static WORD_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^\w+").unwrap());
+static INTEGER_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[0-9]+$").unwrap());
+static IDENTIFIER_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[a-zA-Z_]\w*$").unwrap());
 
 #[derive(Clone)]
 pub struct Lexer<'a> {
@@ -60,26 +61,27 @@ impl<'a> Iterator for Lexer<'a> {
             return Some(Ok(t));
         }
 
-        // keywords
-        for kw in ALL_KEYWORDS {
-            if self.remaining().starts_with(kw.as_str()) {
-                self.idx += kw.as_str().len();
-                return Some(Ok(Token::Keyword(*kw)));
+        // others
+        if let Some(m) = WORD_REGEX.find(self.remaining()) {
+            for kw in ALL_KEYWORDS {
+                if m.as_str() == kw.as_str() {
+                    self.idx += m.len();
+                    return Some(Ok(Token::Keyword(*kw)));
+                }
             }
-        }
 
-        // constants?
-        if let Some(m) = INTEGER_REGEX.find(self.remaining()) {
-            let constant = m.as_str().parse::<i32>().unwrap();
-            self.idx += m.len();
-            return Some(Ok(Token::Constant(constant)));
-        }
+            // constants?
+            if let Some(m) = INTEGER_REGEX.find(m.as_str()) {
+                let constant = m.as_str().parse::<i32>().unwrap();
+                self.idx += m.len();
+                return Some(Ok(Token::Constant(constant)));
+            }
 
-        // identifiers?
-        if let Some(m) = IDENTIFIER_REGEX.find(self.remaining()) {
-            let identifier = m.as_str();
-            self.idx += identifier.len();
-            return Some(Ok(Token::identifier(identifier)));
+            // identifiers
+            if let Some(m) = IDENTIFIER_REGEX.find(m.as_str()) {
+                self.idx += m.len();
+                return Some(Ok(Token::identifier(m.as_str())));
+            }
         }
 
         Some(Err(format!(
@@ -93,15 +95,35 @@ impl<'a> Iterator for Lexer<'a> {
 mod tests {
     use super::*;
 
-    fn test_lexer_success(input: &str, expected_tokens: Vec<Token<'static>>) {
+    fn test_lexer_success(input: &str, expected_tokens: Vec<Token<'static>>) -> Result<(), String> {
         for (token, expected) in Lexer::new(input).zip(expected_tokens) {
             assert!(token.is_ok());
             assert_eq!(token.unwrap(), expected);
         }
+
+        Ok(())
+    }
+
+    fn test_lexer_fail(input: &str) {
+        assert!(
+            Lexer::new(input)
+                .collect::<Result<Vec<Token>, String>>()
+                .is_err()
+        )
     }
 
     #[test]
     fn test_lexer_case_constant_and_semicolon_are_adjacent() {
-        test_lexer_success("return 3;", vec![t!("return"), Token::Constant(3), t!(";")]);
+        test_lexer_success("return 3;", vec![t!("return"), Token::Constant(3), t!(";")]).unwrap();
+    }
+
+    #[test]
+    fn test_lexer_case_identifier_with_digits() {
+        test_lexer_success("int3", vec![Token::identifier("int3")]).unwrap();
+    }
+
+    #[test]
+    fn test_lexer_case_fail_for_unprocessable_identifier() {
+        test_lexer_fail("123abc");
     }
 }
