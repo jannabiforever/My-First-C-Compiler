@@ -7,15 +7,25 @@ use crate::parser_base::grammar::*;
 use crate::t;
 
 #[derive(Clone)]
-pub struct Parser<'a> {
-    lexer: Peekable<Lexer<'a>>,
+pub struct Parser<'a, I>
+where
+    I: Iterator<Item = Result<Token<'a>, String>>,
+{
+    lexer: Peekable<I>,
 }
 
-impl<'a> Parser<'a> {
+impl<'a> Parser<'a, Lexer<'a>> {
     pub fn new(lexer: Lexer<'a>) -> Self {
-        Self { lexer: lexer.peekable() }
+        Self {
+            lexer: lexer.peekable(),
+        }
     }
+}
 
+impl<'a, I> Parser<'a, I>
+where
+    I: Iterator<Item = Result<Token<'a>, String>>,
+{
     pub fn parse(mut self) -> Result<Program<'a>, String> {
         let fd = self.parse_function_def()?;
         let remaining_tokens = self.lexer.collect::<Result<Vec<Token<'a>>, String>>()?;
