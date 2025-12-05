@@ -1,7 +1,10 @@
-use crate::lexer_base::{error::LexError, token::TokenType};
+use crate::{
+    error::{CompilerError, IntoCompilerError},
+    lexer_base::{LexError, TokenType},
+};
 use thiserror::Error;
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, Clone, PartialEq)]
 pub enum ParseError {
     #[error("Lexer error: {0}")]
     LexError(#[from] LexError),
@@ -45,3 +48,6 @@ impl ParseError {
         }
     }
 }
+
+impl IntoCompilerError for ParseError {}
+pub type CompilerParseError = CompilerError<ParseError>;

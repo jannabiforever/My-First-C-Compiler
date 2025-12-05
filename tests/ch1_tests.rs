@@ -1,16 +1,12 @@
-use my_first_compiler::lexer_base::lexer;
-use my_first_compiler::parser_base::{error::ParseError, parser};
+use my_first_compiler::{error::CompilerError, lexer_base, parser_base};
 use std::fs;
 use walkdir::WalkDir;
 
-fn test_file(path: &str) -> Result<(), ParseError> {
-    let input = fs::read_to_string(path).map_err(|e| ParseError::UnexpectedToken {
-        expected: "valid file".to_string(),
-        found: Some(format!("IO error: {}", e)),
-    })?;
+fn test_file(path: &str) -> Result<(), CompilerError<parser_base::ParseError>> {
+    let input = fs::read_to_string(path).expect("Given file path is not Valid");
 
-    let lexer = lexer::Lexer::new(input.as_str());
-    parser::Parser::new(lexer).parse()?;
+    let lexer = lexer_base::Lexer::new(input.as_str());
+    parser_base::Parser::new(lexer).parse()?;
 
     Ok(())
 }
@@ -63,7 +59,7 @@ fn test_invalid_lex() {
         let path = entry.path().to_str().unwrap();
 
         let input = fs::read_to_string(path).expect("Failed to read file");
-        let lexer = lexer::Lexer::new(input.as_str());
+        let lexer = lexer_base::Lexer::new(input.as_str());
 
         // Try to consume the lexer - if it succeeds, that's bad
         let tokens_result: Result<Vec<_>, _> = lexer.collect();
@@ -102,9 +98,9 @@ fn test_invalid_parse() {
         let path = entry.path().to_str().unwrap();
 
         let input = fs::read_to_string(path).expect("Failed to read file");
-        let lexer = lexer::Lexer::new(input.as_str());
+        let lexer = lexer_base::Lexer::new(input.as_str());
 
-        match parser::Parser::new(lexer).parse() {
+        match parser_base::Parser::new(lexer).parse() {
             Ok(_) => {
                 unexpected_pass.push(format!("  ✗ {}: Should have failed parsing", path));
             }

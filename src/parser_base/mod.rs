@@ -1,3 +1,9 @@
-pub mod error;
-pub mod grammar;
-pub mod parser;
+mod error;
+mod grammar;
+mod parser;
+
+pub use error::{CompilerParseError, ParseError};
+pub use grammar::{
+    BinaryExpression, BinaryOperator, Expression, FuncDef, Program, Statement, UnaryOperator,
+};
+pub use parser::Parser;

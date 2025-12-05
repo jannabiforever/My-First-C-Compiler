@@ -56,6 +56,30 @@ impl Span {
             column,
         }
     }
+
+    /// Returns a `Span` representing the end-of-file position of the given source.
+    pub fn eof(src: &str) -> Self {
+        let len = src.len();
+
+        let mut line = 1;
+        let mut col = 1;
+
+        for b in src.bytes() {
+            if b == b'\n' {
+                line += 1;
+                col = 1;
+            } else {
+                col += 1;
+            }
+        }
+
+        Self {
+            start: len,
+            end: len,
+            line,
+            column: col,
+        }
+    }
 }
 
 /// Token represents a lexical token with its type and location
@@ -68,6 +92,16 @@ pub struct Token<'a> {
 impl<'a> Token<'a> {
     pub fn new(kind: TokenType<'a>, span: Span) -> Self {
         Self { kind, span }
+    }
+
+    /// Create a constant-type token
+    pub fn constant(value: i32, span: Span) -> Self {
+        Self::new(TokenType::Constant(value), span)
+    }
+
+    /// Create an identifier-type token
+    pub fn identifier(value: &'a str, span: Span) -> Self {
+        Self::new(TokenType::identifier(value), span)
     }
 }
 

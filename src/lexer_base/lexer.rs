@@ -1,6 +1,7 @@
 use std::sync::LazyLock;
 
 use crate::{
+    error::CompilerError,
     lexer_base::{
         error::LexError,
         token::{ALL_KEYWORDS, Span, Token, TokenType},
@@ -29,6 +30,10 @@ impl<'a> Lexer<'a> {
             line: 1,
             column: 1,
         }
+    }
+
+    pub fn eof_span(&self) -> Span {
+        Span::eof(self.source)
     }
 
     /// Returns the remaining part of the source string.
@@ -80,7 +85,7 @@ impl<'a> Lexer<'a> {
 }
 
 impl<'a> Iterator for Lexer<'a> {
-    type Item = Result<Token<'a>, LexError>;
+    type Item = Result<Token<'a>, CompilerError<LexError>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.trim_ascii_start();
@@ -121,7 +126,7 @@ impl<'a> Iterator for Lexer<'a> {
                 let end_idx = self.idx + len;
                 self.advance(len);
                 let span = Span::new(start_idx, end_idx, start_line, start_column);
-                return Some(Ok(Token::new(TokenType::Constant(constant), span)));
+                return Some(Ok(Token::constant(constant, span)));
             }
 
             // identifiers
@@ -130,20 +135,29 @@ impl<'a> Iterator for Lexer<'a> {
                 let end_idx = self.idx + len;
                 self.advance(len);
                 let span = Span::new(start_idx, end_idx, start_line, start_column);
-                return Some(Ok(Token::new(TokenType::identifier(m.as_str()), span)));
+                return Some(Ok(Token::identifier(m.as_str(), span)));
             }
 
             // Invalid token format (word that doesn't match any pattern)
             let token_str = m.as_str().to_string();
-            self.advance(m.len());
-            return Some(Err(LexError::InvalidTokenFormat(token_str, start_idx)));
+            let len = m.len();
+            let end_idx = self.idx + len;
+            self.advance(len);
+            let span = Span::new(start_idx, end_idx, start_line, start_column);
+            return Some(Err(CompilerError::new(
+                LexError::InvalidTokenFormat(token_str),
+                span,
+            )));
         }
 
         let unexpected_char = self.remaining().chars().next().unwrap();
-        self.advance(unexpected_char.len_utf8());
-        Some(Err(LexError::UnexpectedCharacter(
-            unexpected_char,
-            start_idx,
+        let len = unexpected_char.len_utf8();
+        let end_idx = self.idx + len;
+        self.advance(len);
+        let span = Span::new(start_idx, end_idx, start_line, start_column);
+        Some(Err(CompilerError::new(
+            LexError::UnexpectedCharacter(unexpected_char),
+            span,
         )))
     }
 }
@@ -155,7 +169,7 @@ mod tests {
     fn test_lexer_success(
         input: &str,
         expected_kinds: Vec<TokenType<'static>>,
-    ) -> Result<(), LexError> {
+    ) -> Result<(), CompilerError<LexError>> {
         let tokens: Vec<Token> = Lexer::new(input).collect::<Result<Vec<_>, _>>()?;
         let kinds: Vec<TokenType> = tokens.iter().map(|t| t.kind.clone()).collect();
         assert_eq!(kinds, expected_kinds);
@@ -165,7 +179,7 @@ mod tests {
     fn test_lexer_fail(input: &str) {
         assert!(
             Lexer::new(input)
-                .collect::<Result<Vec<Token>, LexError>>()
+                .collect::<Result<Vec<Token>, CompilerError<LexError>>>()
                 .is_err()
         )
     }
@@ -191,26 +205,33 @@ mod tests {
 
     #[test]
     fn test_lexer_error_unexpected_character() {
-        let result: Result<Vec<Token>, LexError> = Lexer::new("int main() { return @; }").collect();
+        let result: Result<Vec<Token>, CompilerError<LexError>> =
+            Lexer::new("int main() { return @; }").collect();
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err, LexError::UnexpectedCharacter('@', 20));
+        assert_eq!(err.error, LexError::UnexpectedCharacter('@'));
+        assert_eq!(err.span.start, 20);
     }
 
     #[test]
     fn test_lexer_error_unexpected_character_at_start() {
-        let result: Result<Vec<Token>, LexError> = Lexer::new("@invalid").collect();
+        let result: Result<Vec<Token>, CompilerError<LexError>> = Lexer::new("@invalid").collect();
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err, LexError::UnexpectedCharacter('@', 0));
+        assert_eq!(err.error, LexError::UnexpectedCharacter('@'));
+        assert_eq!(err.span.start, 0);
     }
 
     #[test]
     fn test_lexer_error_invalid_token_format() {
-        let result: Result<Vec<Token>, LexError> = Lexer::new("123abc").collect();
+        let result: Result<Vec<Token>, CompilerError<LexError>> = Lexer::new("123abc").collect();
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err, LexError::InvalidTokenFormat("123abc".to_string(), 0));
+        assert_eq!(
+            err.error,
+            LexError::InvalidTokenFormat("123abc".to_string())
+        );
+        assert_eq!(err.span.start, 0);
     }
 
     #[test]
@@ -221,17 +242,20 @@ mod tests {
 
     #[test]
     fn test_lexer_error_multiple_special_chars() {
-        let result: Result<Vec<Token>, LexError> = Lexer::new("int main() #$").collect();
+        let result: Result<Vec<Token>, CompilerError<LexError>> =
+            Lexer::new("int main() #$").collect();
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err, LexError::UnexpectedCharacter('#', 11));
+        assert_eq!(err.error, LexError::UnexpectedCharacter('#'));
+        assert_eq!(err.span.start, 11);
     }
 
     #[test]
     fn test_lexer_error_position_after_whitespace() {
-        let result: Result<Vec<Token>, LexError> = Lexer::new("int   @").collect();
+        let result: Result<Vec<Token>, CompilerError<LexError>> = Lexer::new("int   @").collect();
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err, LexError::UnexpectedCharacter('@', 6));
+        assert_eq!(err.error, LexError::UnexpectedCharacter('@'));
+        assert_eq!(err.span.start, 6);
     }
 }
