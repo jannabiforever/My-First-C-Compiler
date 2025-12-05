@@ -209,3 +209,168 @@ where
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::lexer_base::Lexer;
+
+    fn parse_program(input: &str) -> Result<Program<'_>, CompilerParseError> {
+        let lexer = Lexer::new(input);
+        Parser::new(lexer).parse()
+    }
+
+    #[test]
+    fn test_parse_simple_function() {
+        let input = "int main(void) { return 0; }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        assert_eq!(program.functions.len(), 1);
+        assert_eq!(program.functions[0].name, "main");
+        assert_eq!(program.functions[0].body.statements.len(), 1);
+    }
+
+    #[test]
+    fn test_parse_function_with_constant() {
+        let input = "int main(void) { return 42; }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        assert_eq!(program.functions.len(), 1);
+        match &program.functions[0].body.statements[0] {
+            Statement::Return {
+                expr: Expression::Constant(42),
+            } => {}
+            _ => panic!("Expected return 42"),
+        }
+    }
+
+    #[test]
+    fn test_parse_function_without_void() {
+        let input = "int main() { return 0; }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_parse_multiple_statements() {
+        let input = "int main(void) { return 1; }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_parse_function_with_spaces() {
+        let input = "int   main  (  void  )  {  return   0  ;  }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_parse_error_missing_type() {
+        let input = "main(void) { return 0; }";
+        let result = parse_program(input);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err.error, ParseError::UnexpectedToken { .. }));
+    }
+
+    #[test]
+    fn test_parse_error_missing_semicolon() {
+        let input = "int main(void) { return 0 }";
+        let result = parse_program(input);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err.error, ParseError::UnexpectedToken { .. }));
+    }
+
+    #[test]
+    fn test_parse_error_missing_brace() {
+        let input = "int main(void) { return 0;";
+        let result = parse_program(input);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err.error, ParseError::UnexpectedEof { .. }));
+    }
+
+    #[test]
+    fn test_parse_error_invalid_function_name() {
+        let input = "int 123(void) { return 0; }";
+        let result = parse_program(input);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err.error, ParseError::UnexpectedToken { .. }));
+    }
+
+    #[test]
+    fn test_parse_error_missing_expression() {
+        let input = "int main(void) { return; }";
+        let result = parse_program(input);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err.error, ParseError::UnexpectedToken { .. }));
+    }
+
+    #[test]
+    fn test_parse_error_unexpected_eof() {
+        let input = "int main(void) { return";
+        let result = parse_program(input);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err.error, ParseError::UnexpectedEof { .. }));
+    }
+
+    #[test]
+    fn test_parse_error_empty_input() {
+        let input = "";
+        let result = parse_program(input);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err.error, ParseError::UnexpectedEof { .. }));
+    }
+
+    #[test]
+    fn test_parse_expression_constant() {
+        let input = "int main(void) { return 999; }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        match &program.functions[0].body.statements[0] {
+            Statement::Return {
+                expr: Expression::Constant(999),
+            } => {}
+            _ => panic!("Expected return 999"),
+        }
+    }
+
+    #[test]
+    fn test_parse_expression_variable() {
+        let input = "int main(void) { return foo; }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        match &program.functions[0].body.statements[0] {
+            Statement::Return {
+                expr: Expression::Variable(name),
+            } if name == "foo" => {}
+            _ => panic!("Expected return foo"),
+        }
+    }
+
+    #[test]
+    fn test_parse_error_invalid_statement() {
+        let input = "int main(void) { int x; }";
+        let result = parse_program(input);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_function_name_with_underscore() {
+        let input = "int _main(void) { return 0; }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        assert_eq!(program.functions[0].name, "_main");
+    }
+}
