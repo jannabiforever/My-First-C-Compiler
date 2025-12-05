@@ -2,27 +2,29 @@
 #[macro_export]
 macro_rules! t {
     (";") => {
-        $crate::lexer_base::token::TokenType::Semicolon
+        $crate::lexer_base::token::TokenType::Static(
+            $crate::lexer_base::token::StaticToken::Semicolon,
+        )
     };
     ("{") => {
-        $crate::lexer_base::token::TokenType::LBrace
+        $crate::lexer_base::token::TokenType::Static($crate::lexer_base::token::StaticToken::LBrace)
     };
     ("}") => {
-        $crate::lexer_base::token::TokenType::RBrace
+        $crate::lexer_base::token::TokenType::Static($crate::lexer_base::token::StaticToken::RBrace)
     };
     ("(") => {
-        $crate::lexer_base::token::TokenType::LParen
+        $crate::lexer_base::token::TokenType::Static($crate::lexer_base::token::StaticToken::LParen)
     };
     (")") => {
-        $crate::lexer_base::token::TokenType::RParen
+        $crate::lexer_base::token::TokenType::Static($crate::lexer_base::token::StaticToken::RParen)
     };
     ("int") => {
-        $crate::lexer_base::token::TokenType::Int
+        $crate::lexer_base::token::TokenType::Static($crate::lexer_base::token::StaticToken::Int)
     };
     ("void") => {
-        $crate::lexer_base::token::TokenType::Void
+        $crate::lexer_base::token::TokenType::Static($crate::lexer_base::token::StaticToken::Void)
     };
     ("return") => {
-        $crate::lexer_base::token::TokenType::Return
+        $crate::lexer_base::token::TokenType::Static($crate::lexer_base::token::StaticToken::Return)
     };
 }

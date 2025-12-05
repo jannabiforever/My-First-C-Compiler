@@ -110,7 +110,7 @@ impl<'a> Iterator for Lexer<'a> {
                     let end_idx = self.idx + len;
                     self.advance(len);
                     let span = Span::new(start_idx, end_idx, start_line, start_column);
-                    return Some(Ok(Token::new(kw.clone(), span)));
+                    return Some(Ok(Token::new(TokenType::Static(*kw), span)));
                 }
             }
 

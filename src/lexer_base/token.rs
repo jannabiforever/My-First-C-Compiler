@@ -1,14 +1,50 @@
 use std::borrow::Cow;
 
-pub const ALL_KEYWORDS: &[TokenType] = &[TokenType::Int, TokenType::Void, TokenType::Return];
+/// Static tokens (keywords and symbols with fixed string representation)
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StaticToken {
+    // Keywords
+    Int,
+    Void,
+    Return,
+
+    // Symbols
+    Semicolon,
+    LParen,
+    RParen,
+    LBrace,
+    RBrace,
+}
+
+impl StaticToken {
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            StaticToken::Int => "int",
+            StaticToken::Void => "void",
+            StaticToken::Return => "return",
+            StaticToken::Semicolon => ";",
+            StaticToken::LParen => "(",
+            StaticToken::RParen => ")",
+            StaticToken::LBrace => "{",
+            StaticToken::RBrace => "}",
+        }
+    }
+}
+
+pub const ALL_KEYWORDS: &[StaticToken] =
+    &[StaticToken::Int, StaticToken::Void, StaticToken::Return];
 
 /// Span represents the location information of a token in the source code
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Span {
-    pub start: usize,  // byte offset in source (inclusive)
-    pub end: usize,    // byte offset in source (exclusive)
-    pub line: usize,   // 1-based line number
-    pub column: usize, // 1-based column number (at start of token)
+    /// byte offset in source (inclusive)
+    pub start: usize,
+    /// byte offset in source (exclusive)
+    pub end: usize,
+    /// 1-based line number
+    pub line: usize,
+    /// 1-based column number (at start of token)
+    pub column: usize,
 }
 
 impl Span {
@@ -48,17 +84,8 @@ pub enum TokenType<'a> {
     Identifier(Cow<'a, str>), // [a-zA-Z_]\w*
     Constant(i32),            // [0-9]+
 
-    // Keywords
-    Int,
-    Void,
-    Return,
-
-    // Symbols
-    Semicolon,
-    LParen,
-    RParen,
-    LBrace,
-    RBrace,
+    // Static tokens (keywords and symbols)
+    Static(StaticToken),
 }
 
 impl<'a> TokenType<'a> {
@@ -66,37 +93,21 @@ impl<'a> TokenType<'a> {
         TokenType::Identifier(Cow::Borrowed(input))
     }
 
-    pub fn as_str(&self) -> &str {
-        match self {
-            TokenType::Int => "int",
-            TokenType::Void => "void",
-            TokenType::Return => "return",
-            TokenType::Semicolon => ";",
-            TokenType::LParen => "(",
-            TokenType::RParen => ")",
-            TokenType::LBrace => "{",
-            TokenType::RBrace => "}",
-            TokenType::Identifier(s) => s.as_ref(),
-            TokenType::Constant(_) => {
-                // Note: This returns a reference to a temporary string
-                // For constants, ascii_length() should be used instead
-                unreachable!("as_str() should not be called on Constant tokens")
-            }
-        }
-    }
-
     pub fn ascii_length(&self) -> usize {
         match self {
             TokenType::Identifier(s) => s.len(),
             TokenType::Constant(n) => n.to_string().len(),
-            TokenType::Int => 3,
-            TokenType::Void => 4,
-            TokenType::Return => 6,
-            TokenType::Semicolon
-            | TokenType::LParen
-            | TokenType::RParen
-            | TokenType::LBrace
-            | TokenType::RBrace => 1,
+            TokenType::Static(st) => st.as_str().len(),
+        }
+    }
+}
+
+impl<'a> std::fmt::Display for TokenType<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TokenType::Identifier(name) => write!(f, "identifier '{}'", name),
+            TokenType::Constant(value) => write!(f, "constant {}", value),
+            TokenType::Static(st) => write!(f, "'{}'", st.as_str()),
         }
     }
 }
