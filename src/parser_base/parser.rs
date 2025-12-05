@@ -1,11 +1,12 @@
 use std::borrow::Cow;
 use std::iter::Peekable;
 
+use crate::parser_base::BinaryOp;
 use crate::{
     error::IntoCompilerError,
     lexer_base::{CompilerLexError, Lexer, Span, Token, TokenType},
     parser_base::{
-        Block, CompilerParseError, Expression, FuncDef, ParseError, Program, Statement,
+        Block, CompilerParseError, Expression, FuncDef, ParseError, Program, Statement, UnaryOp,
         grammar::Type,
     },
     t,
@@ -39,7 +40,7 @@ where
         let mut functions = Vec::new();
 
         // Parse all functions until EOF
-        while self.lexer.peek().is_some() {
+        while self.peek_token()?.is_some() {
             functions.push(self.parse_function()?);
         }
 
@@ -85,10 +86,9 @@ where
 
         // Parse statements until we hit '}'
         loop {
-            match self.lexer.peek() {
-                Some(Ok(Token { kind: t!("}"), .. })) => break,
-                Some(Err(err)) => return Err(err.clone().convert_error::<ParseError>()),
-                Some(Ok(_)) => {
+            match self.peek_token()? {
+                Some(Token { kind: t!("}"), .. }) => break,
+                Some(_) => {
                     statements.push(self.parse_statement()?);
                 }
                 None => {
@@ -99,19 +99,12 @@ where
         }
 
         self.expect(t!("}"))?;
-
         Ok(Block { statements })
     }
 
     /// Parse a statement
     fn parse_statement(&mut self) -> Result<Statement<'a>, CompilerParseError> {
-        match self
-            .lexer
-            .peek()
-            .map(|t| t.as_ref())
-            .transpose()
-            .map_err(|e| e.clone().convert_error())?
-        {
+        match self.peek_token()? {
             Some(Token {
                 kind: t!("return"), ..
             }) => self.parse_return_statement(),
@@ -132,33 +125,87 @@ where
 
     /// Parse an expression
     fn parse_expression(&mut self) -> Result<Expression<'a>, CompilerParseError> {
-        match self
-            .lexer
-            .next()
-            .transpose()
-            .map_err(|e| e.convert_error::<ParseError>())?
-        {
+        let base = self.parse_unit_expression()?;
+        self.parse_infix_operator(base, 0)
+    }
+
+    fn parse_unit_expression(&mut self) -> Result<Expression<'a>, CompilerParseError> {
+        match self.peek_token()? {
+            Some(Token { kind: t!("("), .. }) => self.parse_grouped_expression(),
             Some(Token {
                 kind: TokenType::Constant(value),
                 ..
-            }) => Ok(Expression::Constant(value)),
+            }) => {
+                self.next_token()?;
+                Ok(Expression::Constant(value))
+            }
             Some(Token {
                 kind: TokenType::Identifier(name),
                 ..
-            }) => Ok(Expression::Variable(name)),
+            }) => {
+                self.next_token()?;
+                Ok(Expression::Variable(name.clone()))
+            }
+            Some(Token { kind: t!("-"), .. }) => {
+                self.next_token()?;
+                Ok(Expression::Unary {
+                    op: UnaryOp::Negate,
+                    expr: Box::new(self.parse_unit_expression()?),
+                })
+            }
             Some(token) => Err(ParseError::expected_expression(token.kind).with_span(token.span)),
             None => Err(ParseError::expected_expression_eof().with_span(self.eof_span)),
         }
     }
 
+    fn parse_grouped_expression(&mut self) -> Result<Expression<'a>, CompilerParseError> {
+        self.expect(t!("("))?;
+        let expr = self.parse_expression()?;
+        self.expect(t!(")"))?;
+        Ok(Expression::Grouped(Box::new(expr)))
+    }
+
+    fn parse_infix_operator(
+        &mut self,
+        mut lhs: Expression<'a>,
+        min_bp: u8,
+    ) -> Result<Expression<'a>, CompilerParseError> {
+        loop {
+            // Peek at the next token to see if it's a binary operator
+            let op = match self
+                .peek_token()?
+                .and_then(|t| BinaryOp::from_token_type(&t.kind))
+            {
+                Some(op) => op,
+                None => break, // EOF, done
+            };
+
+            let (left_bp, right_bp) = op.infix_binding_power();
+
+            // If the binding power is too low, stop
+            if left_bp < min_bp {
+                break;
+            }
+
+            // Consume the operator token
+            self.next_token()?;
+
+            let rhs = self.parse_unit_expression()?;
+            let rhs = self.parse_infix_operator(rhs, right_bp)?;
+
+            lhs = Expression::Binary {
+                op,
+                lhs: Box::new(lhs),
+                rhs: Box::new(rhs),
+            };
+        }
+
+        Ok(lhs)
+    }
+
     /// Expect a specific token
     fn expect(&mut self, expected: TokenType<'static>) -> Result<(), CompilerParseError> {
-        match self
-            .lexer
-            .next()
-            .transpose()
-            .map_err(|e| e.convert_error())?
-        {
+        match self.next_token()? {
             Some(token) if token.kind == expected => Ok(()),
             Some(unexpected) => {
                 Err(ParseError::unexpected_token(expected, unexpected.kind)
@@ -170,20 +217,14 @@ where
 
     /// Expect an identifier token
     fn expect_identifier(&mut self) -> Result<Cow<'a, str>, CompilerParseError> {
-        match self
-            .lexer
-            .next()
-            .transpose()
-            .map_err(|e| e.convert_error::<ParseError>())?
-        {
-            Some(token) if matches!(token.kind, TokenType::Identifier(_)) => {
-                if let TokenType::Identifier(name) = token.kind {
-                    Ok(name)
-                } else {
-                    unreachable!()
-                }
+        match self.next_token()? {
+            Some(Token {
+                kind: TokenType::Identifier(name),
+                ..
+            }) => Ok(name),
+            Some(Token { kind, span }) => {
+                Err(ParseError::expected_identifier(kind).with_span(span))
             }
-            Some(token) => Err(ParseError::expected_identifier(token.kind).with_span(token.span)),
             None => Err(ParseError::expected_identifier_eof().with_span(self.eof_span)),
         }
     }
@@ -193,43 +234,46 @@ where
         &mut self,
         expected: TokenType<'static>,
     ) -> Result<bool, CompilerParseError> {
-        match self.lexer.peek() {
-            Some(Ok(token)) if token.kind == expected => {
-                self.lexer.next(); // Consume it
+        match self.peek_token()? {
+            Some(token) if token.kind == expected => {
+                self.next_token()?;
                 Ok(true)
             }
-            Some(Ok(_)) => {
-                // Token doesn't match, don't consume
-                Ok(false)
-            }
-            Some(Err(_)) => {
-                // Consume and return the error
-                match self.lexer.next() {
-                    Some(Err(err)) => Err(err.convert_error::<ParseError>()),
-                    _ => unreachable!("next and peek should return same result"),
-                }
-            }
-            None => Ok(false), // End of input
+            _ => Ok(false),
         }
     }
 
     fn expect_type(&mut self) -> Result<Type, CompilerParseError> {
-        match self.lexer.peek() {
-            Some(Ok(Token {
+        match self.peek_token()? {
+            Some(Token {
                 kind: t!("int"), ..
-            })) => {
-                self.lexer.next();
+            }) => {
+                self.next_token()?;
                 Ok(Type::Int)
             }
-            Some(Ok(Token {
+            Some(Token {
                 kind: t!("void"), ..
-            })) => {
-                self.lexer.next();
+            }) => {
+                self.next_token()?;
                 Ok(Type::Void)
             }
-            Some(Ok(t)) => Err(ParseError::expected_type(t.kind.clone()).with_span(t.span)),
+            Some(Token { kind, span }) => Err(ParseError::expected_type(kind).with_span(span)),
             _ => Err(ParseError::expected_type_eof().with_span(self.eof_span)),
         }
+    }
+
+    /// Consumes the next token from the lexer.
+    fn next_token(&mut self) -> Result<Option<Token<'a>>, CompilerParseError> {
+        self.lexer.next().transpose().map_err(|e| e.convert_error())
+    }
+
+    /// Peeks the next token from the lexer without consuming it.
+    fn peek_token(&mut self) -> Result<Option<Token<'a>>, CompilerParseError> {
+        self.lexer
+            .peek()
+            .cloned()
+            .transpose()
+            .map_err(|e| e.convert_error())
     }
 }
 
@@ -360,6 +404,246 @@ mod tests {
         let program = result.unwrap();
         assert_eq!(program.functions[0].name, "_main");
         assert_eq!(program.functions[0].return_type, Type::Int);
+    }
+
+    // === Expression Parsing Tests ===
+
+    #[test]
+    fn test_parse_binary_addition() {
+        let input = "int main(void) { return 1 + 2; }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        match &program.functions[0].body.statements[0] {
+            Statement::Return {
+                expr: Expression::Binary { op, lhs, rhs },
+            } => {
+                assert!(matches!(op, crate::parser_base::BinaryOp::Add));
+                assert!(matches!(**lhs, Expression::Constant(1)));
+                assert!(matches!(**rhs, Expression::Constant(2)));
+            }
+            _ => panic!("Expected binary addition"),
+        }
+    }
+
+    #[test]
+    fn test_parse_binary_subtraction() {
+        let input = "int main(void) { return 5 - 3; }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        match &program.functions[0].body.statements[0] {
+            Statement::Return {
+                expr: Expression::Binary { op, lhs, rhs },
+            } => {
+                assert!(matches!(op, crate::parser_base::BinaryOp::Subtract));
+                assert!(matches!(**lhs, Expression::Constant(5)));
+                assert!(matches!(**rhs, Expression::Constant(3)));
+            }
+            _ => panic!("Expected binary subtraction"),
+        }
+    }
+
+    #[test]
+    fn test_parse_binary_multiplication() {
+        let input = "int main(void) { return 3 * 4; }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        match &program.functions[0].body.statements[0] {
+            Statement::Return {
+                expr: Expression::Binary { op, lhs, rhs },
+            } => {
+                assert!(matches!(op, crate::parser_base::BinaryOp::Multiply));
+                assert!(matches!(**lhs, Expression::Constant(3)));
+                assert!(matches!(**rhs, Expression::Constant(4)));
+            }
+            _ => panic!("Expected binary multiplication"),
+        }
+    }
+
+    #[test]
+    fn test_parse_binary_division() {
+        let input = "int main(void) { return 10 / 2; }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        match &program.functions[0].body.statements[0] {
+            Statement::Return {
+                expr: Expression::Binary { op, lhs, rhs },
+            } => {
+                assert!(matches!(op, crate::parser_base::BinaryOp::Divide));
+                assert!(matches!(**lhs, Expression::Constant(10)));
+                assert!(matches!(**rhs, Expression::Constant(2)));
+            }
+            _ => panic!("Expected binary division"),
+        }
+    }
+
+    #[test]
+    fn test_parse_operator_precedence_multiply_before_add() {
+        // 2 + 3 * 4 should be parsed as 2 + (3 * 4)
+        let input = "int main(void) { return 2 + 3 * 4; }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        match &program.functions[0].body.statements[0] {
+            Statement::Return {
+                expr: Expression::Binary { op, lhs, rhs },
+            } => {
+                // Top level should be addition
+                assert!(matches!(op, crate::parser_base::BinaryOp::Add));
+                assert!(matches!(**lhs, Expression::Constant(2)));
+                // Right side should be multiplication
+                match &**rhs {
+                    Expression::Binary { op, lhs, rhs } => {
+                        assert!(matches!(op, crate::parser_base::BinaryOp::Multiply));
+                        assert!(matches!(**lhs, Expression::Constant(3)));
+                        assert!(matches!(**rhs, Expression::Constant(4)));
+                    }
+                    _ => panic!("Expected multiplication on right side"),
+                }
+            }
+            _ => panic!("Expected binary expression"),
+        }
+    }
+
+    #[test]
+    fn test_parse_operator_precedence_divide_before_subtract() {
+        // 10 - 6 / 2 should be parsed as 10 - (6 / 2)
+        let input = "int main(void) { return 10 - 6 / 2; }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        match &program.functions[0].body.statements[0] {
+            Statement::Return {
+                expr: Expression::Binary { op, lhs, rhs },
+            } => {
+                // Top level should be subtraction
+                assert!(matches!(op, crate::parser_base::BinaryOp::Subtract));
+                assert!(matches!(**lhs, Expression::Constant(10)));
+                // Right side should be division
+                match &**rhs {
+                    Expression::Binary { op, lhs, rhs } => {
+                        assert!(matches!(op, crate::parser_base::BinaryOp::Divide));
+                        assert!(matches!(**lhs, Expression::Constant(6)));
+                        assert!(matches!(**rhs, Expression::Constant(2)));
+                    }
+                    _ => panic!("Expected division on right side"),
+                }
+            }
+            _ => panic!("Expected binary expression"),
+        }
+    }
+
+    #[test]
+    fn test_parse_left_associativity() {
+        // 5 - 3 - 1 should be parsed as (5 - 3) - 1
+        let input = "int main(void) { return 5 - 3 - 1; }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        match &program.functions[0].body.statements[0] {
+            Statement::Return {
+                expr: Expression::Binary { op, lhs, rhs },
+            } => {
+                // Top level should be subtraction
+                assert!(matches!(op, crate::parser_base::BinaryOp::Subtract));
+                assert!(matches!(**rhs, Expression::Constant(1)));
+                // Left side should be subtraction (5 - 3)
+                match &**lhs {
+                    Expression::Binary { op, lhs, rhs } => {
+                        assert!(matches!(op, crate::parser_base::BinaryOp::Subtract));
+                        assert!(matches!(**lhs, Expression::Constant(5)));
+                        assert!(matches!(**rhs, Expression::Constant(3)));
+                    }
+                    _ => panic!("Expected subtraction on left side"),
+                }
+            }
+            _ => panic!("Expected binary expression"),
+        }
+    }
+
+    #[test]
+    fn test_parse_grouped_expression() {
+        // (2 + 3) * 4 should respect parentheses
+        let input = "int main(void) { return (2 + 3) * 4; }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        match &program.functions[0].body.statements[0] {
+            Statement::Return {
+                expr: Expression::Binary { op, lhs, rhs },
+            } => {
+                // Top level should be multiplication
+                assert!(matches!(op, crate::parser_base::BinaryOp::Multiply));
+                assert!(matches!(**rhs, Expression::Constant(4)));
+                // Left side should be grouped expression
+                match &**lhs {
+                    Expression::Grouped(inner) => match &**inner {
+                        Expression::Binary { op, lhs, rhs } => {
+                            assert!(matches!(op, crate::parser_base::BinaryOp::Add));
+                            assert!(matches!(**lhs, Expression::Constant(2)));
+                            assert!(matches!(**rhs, Expression::Constant(3)));
+                        }
+                        _ => panic!("Expected addition inside grouped expression"),
+                    },
+                    _ => panic!("Expected grouped expression on left side"),
+                }
+            }
+            _ => panic!("Expected binary expression"),
+        }
+    }
+
+    #[test]
+    fn test_parse_unary_negate() {
+        let input = "int main(void) { return -5; }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        match &program.functions[0].body.statements[0] {
+            Statement::Return {
+                expr: Expression::Unary { op, expr },
+            } => {
+                assert!(matches!(op, crate::parser_base::UnaryOp::Negate));
+                assert!(matches!(**expr, Expression::Constant(5)));
+            }
+            _ => panic!("Expected unary negation"),
+        }
+    }
+
+    #[test]
+    fn test_parse_unary_with_binary() {
+        // -3 + 5 should be parsed as (-3) + 5
+        let input = "int main(void) { return -3 + 5; }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        match &program.functions[0].body.statements[0] {
+            Statement::Return {
+                expr: Expression::Binary { op, lhs, rhs },
+            } => {
+                assert!(matches!(op, crate::parser_base::BinaryOp::Add));
+                assert!(matches!(**rhs, Expression::Constant(5)));
+                match &**lhs {
+                    Expression::Unary { op, expr } => {
+                        assert!(matches!(op, crate::parser_base::UnaryOp::Negate));
+                        assert!(matches!(**expr, Expression::Constant(3)));
+                    }
+                    _ => panic!("Expected unary negation on left side"),
+                }
+            }
+            _ => panic!("Expected binary expression"),
+        }
+    }
+
+    #[test]
+    fn test_parse_complex_expression() {
+        // 2 + 3 * 4 - 5 / (1 + 1)
+        let input = "int main(void) { return 2 + 3 * 4 - 5 / (1 + 1); }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        // Just verify it parses without panicking - detailed structure check would be very verbose
     }
 
     // === Error Cases (Parser-specific) ===

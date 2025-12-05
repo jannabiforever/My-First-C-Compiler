@@ -1,6 +1,21 @@
 /// macro for tokenizing symbols & keywords
 #[macro_export]
 macro_rules! t {
+    ("+") => {
+        $crate::lexer_base::TokenType::Static($crate::lexer_base::StaticToken::Plus)
+    };
+    ("-") => {
+        $crate::lexer_base::TokenType::Static($crate::lexer_base::StaticToken::Minus)
+    };
+    ("*") => {
+        $crate::lexer_base::TokenType::Static($crate::lexer_base::StaticToken::Star)
+    };
+    ("/") => {
+        $crate::lexer_base::TokenType::Static($crate::lexer_base::StaticToken::Slash)
+    };
+    ("!") => {
+        $crate::lexer_base::TokenType::Static($crate::lexer_base::StaticToken::Not)
+    };
     (";") => {
         $crate::lexer_base::TokenType::Static($crate::lexer_base::StaticToken::Semicolon)
     };

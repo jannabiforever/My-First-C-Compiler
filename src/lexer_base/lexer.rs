@@ -76,6 +76,11 @@ impl<'a> Lexer<'a> {
             Some('}') => Some(t!("}")),
             Some('(') => Some(t!("(")),
             Some(')') => Some(t!(")")),
+            Some('-') => Some(t!("-")),
+            Some('+') => Some(t!("+")),
+            Some('*') => Some(t!("*")),
+            Some('/') => Some(t!("/")),
+            Some('!') => Some(t!("!")),
             _ => None,
         }
     }

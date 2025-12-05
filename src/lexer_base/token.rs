@@ -14,6 +14,14 @@ pub enum StaticToken {
     RParen,
     LBrace,
     RBrace,
+
+    // Operators
+    Minus,
+    Plus,
+    Star,
+    Slash,
+    Not,
+    Eq,
 }
 
 impl StaticToken {
@@ -22,11 +30,18 @@ impl StaticToken {
             StaticToken::Int => "int",
             StaticToken::Void => "void",
             StaticToken::Return => "return",
+
             StaticToken::Semicolon => ";",
             StaticToken::LParen => "(",
             StaticToken::RParen => ")",
             StaticToken::LBrace => "{",
             StaticToken::RBrace => "}",
+            StaticToken::Minus => "-",
+            StaticToken::Plus => "+",
+            StaticToken::Star => "*",
+            StaticToken::Slash => "/",
+            StaticToken::Not => "!",
+            StaticToken::Eq => "=",
         }
     }
 }
