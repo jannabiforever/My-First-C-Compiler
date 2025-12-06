@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::iter::Peekable;
 
 use crate::parser_base::BinaryOp;
+use crate::parser_base::grammar::ReturnStmt;
 use crate::{
     error::IntoCompilerError,
     lexer_base::{CompilerLexError, Lexer, Span, Token, TokenType},
@@ -78,6 +79,21 @@ where
         })
     }
 
+    /// Parse a statement
+    fn parse_statement(&mut self) -> Result<Statement<'a>, CompilerParseError> {
+        match self.peek_token()? {
+            Some(Token {
+                kind: t!("return"), ..
+            }) => self.parse_return_statement(),
+            Some(Token { kind: t!("if"), .. }) => self.parse_if_statement(),
+            Some(Token { kind: t!("{"), .. }) => self.parse_block().map(|b| Statement::Block(b)),
+            Some(token) => {
+                Err(ParseError::expected_statement(token.kind.clone()).with_span(token.span))
+            }
+            None => Err(ParseError::expected_statement_eof().with_span(self.eof_span)),
+        }
+    }
+
     /// Parse a block: { statement* }
     fn parse_block(&mut self) -> Result<Block<'a>, CompilerParseError> {
         self.expect(t!("{"))?;
@@ -102,25 +118,27 @@ where
         Ok(Block { statements })
     }
 
-    /// Parse a statement
-    fn parse_statement(&mut self) -> Result<Statement<'a>, CompilerParseError> {
-        match self.peek_token()? {
-            Some(Token {
-                kind: t!("return"), ..
-            }) => self.parse_return_statement(),
-            Some(token) => {
-                Err(ParseError::expected_statement(token.kind.clone()).with_span(token.span))
-            }
-            None => Err(ParseError::expected_statement_eof().with_span(self.eof_span)),
-        }
-    }
-
     /// Parse a return statement: return expr;
     fn parse_return_statement(&mut self) -> Result<Statement<'a>, CompilerParseError> {
         self.expect(t!("return"))?;
         let expr = self.parse_expression()?;
         self.expect(t!(";"))?;
-        Ok(Statement::Return { expr })
+        Ok(Statement::Return(ReturnStmt { expr }))
+    }
+
+    /// Parse an if statement: if (condition) { body } else { body }
+    fn parse_if_statement(&mut self) -> Result<Statement<'a>, CompilerParseError> {
+        self.expect(t!("if"))?;
+        self.expect(t!("("))?;
+        let condition = self.parse_expression()?;
+        self.expect(t!(")"))?;
+        let then_block = self.parse_statement()?;
+        let else_block = self
+            .expect_optional(t!("else"))?
+            .map(|_| self.parse_statement())
+            .transpose()?;
+
+        Ok(Statement::if_stmt(condition, then_block, else_block))
     }
 
     /// Parse an expression
@@ -227,13 +245,13 @@ where
     fn expect_optional(
         &mut self,
         expected: TokenType<'static>,
-    ) -> Result<bool, CompilerParseError> {
+    ) -> Result<Option<Token<'a>>, CompilerParseError> {
         match self.peek_token()? {
             Some(token) if token.kind == expected => {
                 self.next_token()?;
-                Ok(true)
+                Ok(Some(token))
             }
-            _ => Ok(false),
+            _ => Ok(None),
         }
     }
 
@@ -297,9 +315,9 @@ mod tests {
         assert_eq!(program.functions.len(), 1);
         assert_eq!(program.functions[0].return_type, Type::Int);
         match &program.functions[0].body.statements[0] {
-            Statement::Return {
+            Statement::Return(ReturnStmt {
                 expr: Expression::Constant(42),
-            } => {}
+            }) => {}
             _ => panic!("Expected return 42"),
         }
     }
@@ -361,9 +379,9 @@ mod tests {
         assert!(result.is_ok());
         let program = result.unwrap();
         match &program.functions[0].body.statements[0] {
-            Statement::Return {
+            Statement::Return(ReturnStmt {
                 expr: Expression::Constant(999),
-            } => {}
+            }) => {}
             _ => panic!("Expected return 999"),
         }
     }
@@ -375,9 +393,9 @@ mod tests {
         assert!(result.is_ok());
         let program = result.unwrap();
         match &program.functions[0].body.statements[0] {
-            Statement::Return {
+            Statement::Return(ReturnStmt {
                 expr: Expression::Variable(name),
-            } if name == "foo" => {}
+            }) if name == "foo" => {}
             _ => panic!("Expected return foo"),
         }
     }
@@ -401,9 +419,9 @@ mod tests {
         assert!(result.is_ok());
         let program = result.unwrap();
         match &program.functions[0].body.statements[0] {
-            Statement::Return {
+            Statement::Return(ReturnStmt {
                 expr: Expression::Binary { op, lhs, rhs },
-            } => {
+            }) => {
                 assert!(matches!(op, crate::parser_base::BinaryOp::Add));
                 assert!(matches!(**lhs, Expression::Constant(1)));
                 assert!(matches!(**rhs, Expression::Constant(2)));
@@ -419,9 +437,9 @@ mod tests {
         assert!(result.is_ok());
         let program = result.unwrap();
         match &program.functions[0].body.statements[0] {
-            Statement::Return {
+            Statement::Return(ReturnStmt {
                 expr: Expression::Binary { op, lhs, rhs },
-            } => {
+            }) => {
                 assert!(matches!(op, crate::parser_base::BinaryOp::Subtract));
                 assert!(matches!(**lhs, Expression::Constant(5)));
                 assert!(matches!(**rhs, Expression::Constant(3)));
@@ -437,9 +455,9 @@ mod tests {
         assert!(result.is_ok());
         let program = result.unwrap();
         match &program.functions[0].body.statements[0] {
-            Statement::Return {
+            Statement::Return(ReturnStmt {
                 expr: Expression::Binary { op, lhs, rhs },
-            } => {
+            }) => {
                 assert!(matches!(op, crate::parser_base::BinaryOp::Multiply));
                 assert!(matches!(**lhs, Expression::Constant(3)));
                 assert!(matches!(**rhs, Expression::Constant(4)));
@@ -455,9 +473,9 @@ mod tests {
         assert!(result.is_ok());
         let program = result.unwrap();
         match &program.functions[0].body.statements[0] {
-            Statement::Return {
+            Statement::Return(ReturnStmt {
                 expr: Expression::Binary { op, lhs, rhs },
-            } => {
+            }) => {
                 assert!(matches!(op, crate::parser_base::BinaryOp::Divide));
                 assert!(matches!(**lhs, Expression::Constant(10)));
                 assert!(matches!(**rhs, Expression::Constant(2)));
@@ -474,9 +492,9 @@ mod tests {
         assert!(result.is_ok());
         let program = result.unwrap();
         match &program.functions[0].body.statements[0] {
-            Statement::Return {
+            Statement::Return(ReturnStmt {
                 expr: Expression::Binary { op, lhs, rhs },
-            } => {
+            }) => {
                 // Top level should be addition
                 assert!(matches!(op, crate::parser_base::BinaryOp::Add));
                 assert!(matches!(**lhs, Expression::Constant(2)));
@@ -502,9 +520,9 @@ mod tests {
         assert!(result.is_ok());
         let program = result.unwrap();
         match &program.functions[0].body.statements[0] {
-            Statement::Return {
+            Statement::Return(ReturnStmt {
                 expr: Expression::Binary { op, lhs, rhs },
-            } => {
+            }) => {
                 // Top level should be subtraction
                 assert!(matches!(op, crate::parser_base::BinaryOp::Subtract));
                 assert!(matches!(**lhs, Expression::Constant(10)));
@@ -530,9 +548,9 @@ mod tests {
         assert!(result.is_ok());
         let program = result.unwrap();
         match &program.functions[0].body.statements[0] {
-            Statement::Return {
+            Statement::Return(ReturnStmt {
                 expr: Expression::Binary { op, lhs, rhs },
-            } => {
+            }) => {
                 // Top level should be subtraction
                 assert!(matches!(op, crate::parser_base::BinaryOp::Subtract));
                 assert!(matches!(**rhs, Expression::Constant(1)));
@@ -558,9 +576,9 @@ mod tests {
         assert!(result.is_ok());
         let program = result.unwrap();
         match &program.functions[0].body.statements[0] {
-            Statement::Return {
+            Statement::Return(ReturnStmt {
                 expr: Expression::Binary { op, lhs, rhs },
-            } => {
+            }) => {
                 // Top level should be multiplication
                 assert!(matches!(op, crate::parser_base::BinaryOp::Multiply));
                 assert!(matches!(**rhs, Expression::Constant(4)));
@@ -588,9 +606,9 @@ mod tests {
         assert!(result.is_ok());
         let program = result.unwrap();
         match &program.functions[0].body.statements[0] {
-            Statement::Return {
+            Statement::Return(ReturnStmt {
                 expr: Expression::Unary { op, expr },
-            } => {
+            }) => {
                 assert!(matches!(op, crate::parser_base::UnaryOp::Negate));
                 assert!(matches!(**expr, Expression::Constant(5)));
             }
@@ -606,9 +624,9 @@ mod tests {
         assert!(result.is_ok());
         let program = result.unwrap();
         match &program.functions[0].body.statements[0] {
-            Statement::Return {
+            Statement::Return(ReturnStmt {
                 expr: Expression::Binary { op, lhs, rhs },
-            } => {
+            }) => {
                 assert!(matches!(op, crate::parser_base::BinaryOp::Add));
                 assert!(matches!(**rhs, Expression::Constant(5)));
                 match &**lhs {
@@ -641,9 +659,9 @@ mod tests {
         assert!(result.is_ok());
         let program = result.unwrap();
         match &program.functions[0].body.statements[0] {
-            Statement::Return {
+            Statement::Return(ReturnStmt {
                 expr: Expression::Binary { op, lhs, rhs },
-            } => {
+            }) => {
                 assert!(matches!(op, crate::parser_base::BinaryOp::LT));
                 assert!(matches!(**lhs, Expression::Constant(1)));
                 assert!(matches!(**rhs, Expression::Constant(2)));
@@ -659,9 +677,9 @@ mod tests {
         assert!(result.is_ok());
         let program = result.unwrap();
         match &program.functions[0].body.statements[0] {
-            Statement::Return {
+            Statement::Return(ReturnStmt {
                 expr: Expression::Binary { op, lhs, rhs },
-            } => {
+            }) => {
                 assert!(matches!(op, crate::parser_base::BinaryOp::GT));
                 assert!(matches!(**lhs, Expression::Constant(5)));
                 assert!(matches!(**rhs, Expression::Constant(3)));
@@ -677,9 +695,9 @@ mod tests {
         assert!(result.is_ok());
         let program = result.unwrap();
         match &program.functions[0].body.statements[0] {
-            Statement::Return {
+            Statement::Return(ReturnStmt {
                 expr: Expression::Binary { op, lhs, rhs },
-            } => {
+            }) => {
                 assert!(matches!(op, crate::parser_base::BinaryOp::LTE));
                 assert!(matches!(**lhs, Expression::Constant(1)));
                 assert!(matches!(**rhs, Expression::Constant(2)));
@@ -695,9 +713,9 @@ mod tests {
         assert!(result.is_ok());
         let program = result.unwrap();
         match &program.functions[0].body.statements[0] {
-            Statement::Return {
+            Statement::Return(ReturnStmt {
                 expr: Expression::Binary { op, lhs, rhs },
-            } => {
+            }) => {
                 assert!(matches!(op, crate::parser_base::BinaryOp::GTE));
                 assert!(matches!(**lhs, Expression::Constant(5)));
                 assert!(matches!(**rhs, Expression::Constant(3)));
@@ -713,9 +731,9 @@ mod tests {
         assert!(result.is_ok());
         let program = result.unwrap();
         match &program.functions[0].body.statements[0] {
-            Statement::Return {
+            Statement::Return(ReturnStmt {
                 expr: Expression::Binary { op, lhs, rhs },
-            } => {
+            }) => {
                 assert!(matches!(op, crate::parser_base::BinaryOp::EQ));
                 assert!(matches!(**lhs, Expression::Constant(1)));
                 assert!(matches!(**rhs, Expression::Constant(1)));
@@ -731,9 +749,9 @@ mod tests {
         assert!(result.is_ok());
         let program = result.unwrap();
         match &program.functions[0].body.statements[0] {
-            Statement::Return {
+            Statement::Return(ReturnStmt {
                 expr: Expression::Binary { op, lhs, rhs },
-            } => {
+            }) => {
                 assert!(matches!(op, crate::parser_base::BinaryOp::NEQ));
                 assert!(matches!(**lhs, Expression::Constant(1)));
                 assert!(matches!(**rhs, Expression::Constant(2)));
@@ -750,9 +768,9 @@ mod tests {
         assert!(result.is_ok());
         let program = result.unwrap();
         match &program.functions[0].body.statements[0] {
-            Statement::Return {
+            Statement::Return(ReturnStmt {
                 expr: Expression::Binary { op, lhs, rhs },
-            } => {
+            }) => {
                 // Top level should be less than
                 assert!(matches!(op, crate::parser_base::BinaryOp::LT));
 
@@ -788,9 +806,9 @@ mod tests {
         assert!(result.is_ok());
         let program = result.unwrap();
         match &program.functions[0].body.statements[0] {
-            Statement::Return {
+            Statement::Return(ReturnStmt {
                 expr: Expression::Binary { op, lhs, rhs },
-            } => {
+            }) => {
                 // Top level should be equality
                 assert!(matches!(op, crate::parser_base::BinaryOp::EQ));
 

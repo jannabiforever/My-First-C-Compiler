@@ -7,6 +7,8 @@ pub enum StaticToken {
     Int,
     Void,
     Return,
+    If,
+    Else,
 
     // Symbols
     Semicolon,
@@ -37,6 +39,8 @@ impl StaticToken {
             StaticToken::Int => "int",
             StaticToken::Void => "void",
             StaticToken::Return => "return",
+            StaticToken::If => "if",
+            StaticToken::Else => "else",
 
             StaticToken::Semicolon => ";",
             StaticToken::LParen => "(",

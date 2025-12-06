@@ -58,4 +58,10 @@ macro_rules! t {
     ("!=") => {
         $crate::lexer_base::TokenType::Static($crate::lexer_base::StaticToken::NotEqual)
     };
+    ("if") => {
+        $crate::lexer_base::TokenType::Static($crate::lexer_base::StaticToken::If)
+    };
+    ("else") => {
+        $crate::lexer_base::TokenType::Static($crate::lexer_base::StaticToken::Else)
+    };
 }
