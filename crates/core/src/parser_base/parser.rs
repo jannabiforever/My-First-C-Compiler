@@ -124,6 +124,7 @@ where
         self.expect(t!("("))?;
         let condition = self.parse_expression()?;
         self.expect(t!(")"))?;
+        self.expect(t!(";"))?;
         Ok(DoWhileStmt {
             body: Box::new(body),
             cond: condition,
@@ -947,6 +948,310 @@ mod tests {
     #[test]
     fn test_parse_error_incomplete_function() {
         let input = "int main(void)";
+        let result = parse_program(input);
+        assert!(result.is_err());
+    }
+
+    // === While Statement Tests ===
+
+    #[test]
+    fn test_parse_while_statement() {
+        let input = "int main(void) { while (1) { return 0; } }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        match &program.functions[0].body.statements[0] {
+            Statement::While(WhileStmt { cond, body }) => {
+                assert!(matches!(*cond, Expression::Constant(1)));
+                match &**body {
+                    Statement::Block(block) => {
+                        assert_eq!(block.statements.len(), 1);
+                    }
+                    _ => panic!("Expected block statement in while body"),
+                }
+            }
+            _ => panic!("Expected while statement"),
+        }
+    }
+
+    #[test]
+    fn test_parse_while_with_comparison() {
+        let input = "int main(void) { while (x < 10) { return x; } }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        match &program.functions[0].body.statements[0] {
+            Statement::While(WhileStmt { cond, .. }) => match cond {
+                Expression::Binary { op, lhs, rhs } => {
+                    assert!(matches!(op, BinaryOp::LT));
+                    assert!(matches!(&**lhs, Expression::Variable(name) if name == "x"));
+                    assert!(matches!(&**rhs, Expression::Constant(10)));
+                }
+                _ => panic!("Expected binary comparison in while condition"),
+            },
+            _ => panic!("Expected while statement"),
+        }
+    }
+
+    #[test]
+    fn test_parse_while_nested() {
+        let input = "int main(void) { while (1) { while (2) { return 0; } } }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        match &program.functions[0].body.statements[0] {
+            Statement::While(WhileStmt { body, .. }) => match &**body {
+                Statement::Block(block) => {
+                    assert_eq!(block.statements.len(), 1);
+                    assert!(matches!(&block.statements[0], Statement::While(_)));
+                }
+                _ => panic!("Expected block in while body"),
+            },
+            _ => panic!("Expected while statement"),
+        }
+    }
+
+    #[test]
+    fn test_parse_while_error_missing_paren() {
+        let input = "int main(void) { while 1) { return 0; } }";
+        let result = parse_program(input);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_while_error_missing_closing_paren() {
+        let input = "int main(void) { while (1 { return 0; } }";
+        let result = parse_program(input);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_while_error_missing_body() {
+        let input = "int main(void) { while (1) }";
+        let result = parse_program(input);
+        assert!(result.is_err());
+    }
+
+    // === Do-While Statement Tests ===
+
+    #[test]
+    fn test_parse_do_while_statement() {
+        let input = "int main(void) { do { return 0; } while (1); }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        match &program.functions[0].body.statements[0] {
+            Statement::DoWhile(DoWhileStmt { body, cond }) => {
+                assert!(matches!(*cond, Expression::Constant(1)));
+                match &**body {
+                    Statement::Block(block) => {
+                        assert_eq!(block.statements.len(), 1);
+                    }
+                    _ => panic!("Expected block statement in do-while body"),
+                }
+            }
+            _ => panic!("Expected do-while statement"),
+        }
+    }
+
+    #[test]
+    fn test_parse_do_while_with_comparison() {
+        let input = "int main(void) { do { return x; } while (x < 10); }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        match &program.functions[0].body.statements[0] {
+            Statement::DoWhile(DoWhileStmt { cond, .. }) => match cond {
+                Expression::Binary { op, lhs, rhs } => {
+                    assert!(matches!(op, BinaryOp::LT));
+                    assert!(matches!(&**lhs, Expression::Variable(name) if name == "x"));
+                    assert!(matches!(&**rhs, Expression::Constant(10)));
+                }
+                _ => panic!("Expected binary comparison in do-while condition"),
+            },
+            _ => panic!("Expected do-while statement"),
+        }
+    }
+
+    #[test]
+    fn test_parse_do_while_nested() {
+        let input = "int main(void) { do { do { return 0; } while (2); } while (1); }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        match &program.functions[0].body.statements[0] {
+            Statement::DoWhile(DoWhileStmt { body, .. }) => match &**body {
+                Statement::Block(block) => {
+                    assert_eq!(block.statements.len(), 1);
+                    assert!(matches!(&block.statements[0], Statement::DoWhile(_)));
+                }
+                _ => panic!("Expected block in do-while body"),
+            },
+            _ => panic!("Expected do-while statement"),
+        }
+    }
+
+    #[test]
+    fn test_parse_do_while_error_missing_while() {
+        let input = "int main(void) { do { return 0; } (1); }";
+        let result = parse_program(input);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_do_while_error_missing_paren() {
+        let input = "int main(void) { do { return 0; } while 1); }";
+        let result = parse_program(input);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_do_while_error_missing_closing_paren() {
+        let input = "int main(void) { do { return 0; } while (1; }";
+        let result = parse_program(input);
+        assert!(result.is_err());
+    }
+
+    // === If Statement Tests ===
+
+    #[test]
+    fn test_parse_if_statement() {
+        let input = "int main(void) { if (1) { return 0; } }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        match &program.functions[0].body.statements[0] {
+            Statement::If(IfStmt {
+                cond,
+                then_block,
+                else_block,
+            }) => {
+                assert!(matches!(*cond, Expression::Constant(1)));
+                match &**then_block {
+                    Statement::Block(block) => {
+                        assert_eq!(block.statements.len(), 1);
+                    }
+                    _ => panic!("Expected block in if then_block"),
+                }
+                assert!(else_block.is_none());
+            }
+            _ => panic!("Expected if statement"),
+        }
+    }
+
+    #[test]
+    fn test_parse_if_with_comparison() {
+        let input = "int main(void) { if (x > 5) { return x; } }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        match &program.functions[0].body.statements[0] {
+            Statement::If(IfStmt { cond, .. }) => match cond {
+                Expression::Binary { op, lhs, rhs } => {
+                    assert!(matches!(op, BinaryOp::GT));
+                    assert!(matches!(&**lhs, Expression::Variable(name) if name == "x"));
+                    assert!(matches!(&**rhs, Expression::Constant(5)));
+                }
+                _ => panic!("Expected binary comparison in if condition"),
+            },
+            _ => panic!("Expected if statement"),
+        }
+    }
+
+    #[test]
+    fn test_parse_if_else_statement() {
+        let input = "int main(void) { if (1) { return 0; } else { return 1; } }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        match &program.functions[0].body.statements[0] {
+            Statement::If(IfStmt {
+                cond,
+                then_block,
+                else_block,
+            }) => {
+                assert!(matches!(*cond, Expression::Constant(1)));
+                match &**then_block {
+                    Statement::Block(block) => {
+                        assert_eq!(block.statements.len(), 1);
+                    }
+                    _ => panic!("Expected block in if then_block"),
+                }
+                assert!(else_block.is_some());
+                match else_block.as_ref().unwrap().as_ref() {
+                    Statement::Block(block) => {
+                        assert_eq!(block.statements.len(), 1);
+                    }
+                    _ => panic!("Expected block in else block"),
+                }
+            }
+            _ => panic!("Expected if statement"),
+        }
+    }
+
+    #[test]
+    fn test_parse_if_else_if_chain() {
+        let input = "int main(void) { if (x < 0) { return -1; } else if (x > 0) { return 1; } else { return 0; } }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        match &program.functions[0].body.statements[0] {
+            Statement::If(IfStmt { else_block, .. }) => {
+                assert!(else_block.is_some());
+                // The else block should contain another if statement
+                match else_block.as_ref().unwrap().as_ref() {
+                    Statement::If(inner_if) => {
+                        assert!(inner_if.else_block.is_some());
+                    }
+                    _ => panic!("Expected if statement in else block"),
+                }
+            }
+            _ => panic!("Expected if statement"),
+        }
+    }
+
+    #[test]
+    fn test_parse_if_nested() {
+        let input = "int main(void) { if (1) { if (2) { return 0; } } }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        match &program.functions[0].body.statements[0] {
+            Statement::If(IfStmt { then_block, .. }) => match &**then_block {
+                Statement::Block(block) => {
+                    assert_eq!(block.statements.len(), 1);
+                    assert!(matches!(&block.statements[0], Statement::If(_)));
+                }
+                _ => panic!("Expected block in if then_block"),
+            },
+            _ => panic!("Expected if statement"),
+        }
+    }
+
+    #[test]
+    fn test_parse_if_error_missing_paren() {
+        let input = "int main(void) { if 1) { return 0; } }";
+        let result = parse_program(input);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_if_error_missing_closing_paren() {
+        let input = "int main(void) { if (1 { return 0; } }";
+        let result = parse_program(input);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_if_error_missing_body() {
+        let input = "int main(void) { if (1) }";
+        let result = parse_program(input);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_if_else_error_missing_else_body() {
+        let input = "int main(void) { if (1) { return 0; } else }";
         let result = parse_program(input);
         assert!(result.is_err());
     }

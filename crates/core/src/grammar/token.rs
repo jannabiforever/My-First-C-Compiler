@@ -67,8 +67,15 @@ impl StaticToken {
     }
 }
 
-pub const ALL_KEYWORDS: &[StaticToken] =
-    &[StaticToken::Int, StaticToken::Void, StaticToken::Return];
+pub const ALL_KEYWORDS: &[StaticToken] = &[
+    StaticToken::Int,
+    StaticToken::Void,
+    StaticToken::Return,
+    StaticToken::If,
+    StaticToken::Else,
+    StaticToken::While,
+    StaticToken::Do,
+];
 
 /// Span represents the location information of a token in the source code
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
