@@ -90,7 +90,7 @@ impl<'a> Lexer<'a> {
         None
     }
 
-    fn next_symbolic_token(&self) -> Option<TokenType<'a>> {
+    fn next_punctuator_token(&self) -> Option<TokenType<'a>> {
         // Try three-character punctuators first
         if let Some(token) = self.try_match_punctuators(3, THREE_CHAR_PUNCTUATORS) {
             return Some(token);
@@ -121,7 +121,7 @@ impl<'a> Iterator for Lexer<'a> {
         let start_column = self.column;
 
         // Symbols : single char
-        if let Some(kind) = self.next_symbolic_token() {
+        if let Some(kind) = self.next_punctuator_token() {
             let len = kind.ascii_length();
             let end_idx = self.idx + len;
             self.advance(len);
