@@ -15,32 +15,77 @@ pub enum StaticToken {
     Void,
     While,
 
-    // Symbols
-    Semicolon,
-    LParen,
-    RParen,
-    LBrace,
-    RBrace,
+    // Grouping & Delimiters
+    Semicolon, // ;
+    LParen,    // (
+    RParen,    // )
+    LBrace,    // {
+    RBrace,    // }
+    LBracket,  // [
+    RBracket,  // ]
+    Comma,     // ,
+    Colon,     // :
+    Question,  // ?
 
-    // Operators
-    Minus,
-    Plus,
-    Star,
-    Slash,
-    Not,
+    // Arithmetic operators
+    Plus,    // +
+    Minus,   // -
+    Star,    // *
+    Slash,   // /
+    Percent, // %
+
+    // Bitwise operators
+    Ampersand,  // &
+    Pipe,       // |
+    Caret,      // ^
+    Tilde,      // ~
+    LeftShift,  // <<
+    RightShift, // >>
+
+    // Logical operators
+    Not,        // !
+    LogicalAnd, // &&
+    LogicalOr,  // ||
 
     // Comparison operators
-    LessThan,
-    GreaterThan,
-    LessThanOrEqual,
-    GreaterThanOrEqual,
-    EqualEqual,
-    NotEqual,
+    LessThan,           // <
+    GreaterThan,        // >
+    LessThanOrEqual,    // <=
+    GreaterThanOrEqual, // >=
+    EqualEqual,         // ==
+    NotEqual,           // !=
+
+    // Assignment operators
+    Equal,           // =
+    PlusEqual,       // +=
+    MinusEqual,      // -=
+    StarEqual,       // *=
+    SlashEqual,      // /=
+    PercentEqual,    // %=
+    AmpersandEqual,  // &=
+    PipeEqual,       // |=
+    CaretEqual,      // ^=
+    LeftShiftEqual,  // <<=
+    RightShiftEqual, // >>=
+
+    // Increment/Decrement
+    PlusPlus,   // ++
+    MinusMinus, // --
+
+    // Member access
+    Dot,   // .
+    Arrow, // ->
+
+    // Other
+    Ellipsis,   // ...
+    Hash,       // #
+    DoubleHash, // ##
 }
 
 impl StaticToken {
     pub const fn as_str(&self) -> &'static str {
         match self {
+            // Keywords
             StaticToken::Break => "break",
             StaticToken::Continue => "continue",
             StaticToken::Do => "do",
@@ -52,23 +97,71 @@ impl StaticToken {
             StaticToken::Void => "void",
             StaticToken::While => "while",
 
+            // Grouping & Delimiters
             StaticToken::Semicolon => ";",
             StaticToken::LParen => "(",
             StaticToken::RParen => ")",
             StaticToken::LBrace => "{",
             StaticToken::RBrace => "}",
-            StaticToken::Minus => "-",
+            StaticToken::LBracket => "[",
+            StaticToken::RBracket => "]",
+            StaticToken::Comma => ",",
+            StaticToken::Colon => ":",
+            StaticToken::Question => "?",
+
+            // Arithmetic operators
             StaticToken::Plus => "+",
+            StaticToken::Minus => "-",
             StaticToken::Star => "*",
             StaticToken::Slash => "/",
-            StaticToken::Not => "!",
+            StaticToken::Percent => "%",
 
+            // Bitwise operators
+            StaticToken::Ampersand => "&",
+            StaticToken::Pipe => "|",
+            StaticToken::Caret => "^",
+            StaticToken::Tilde => "~",
+            StaticToken::LeftShift => "<<",
+            StaticToken::RightShift => ">>",
+
+            // Logical operators
+            StaticToken::Not => "!",
+            StaticToken::LogicalAnd => "&&",
+            StaticToken::LogicalOr => "||",
+
+            // Comparison operators
             StaticToken::LessThan => "<",
             StaticToken::GreaterThan => ">",
             StaticToken::LessThanOrEqual => "<=",
             StaticToken::GreaterThanOrEqual => ">=",
             StaticToken::EqualEqual => "==",
             StaticToken::NotEqual => "!=",
+
+            // Assignment operators
+            StaticToken::Equal => "=",
+            StaticToken::PlusEqual => "+=",
+            StaticToken::MinusEqual => "-=",
+            StaticToken::StarEqual => "*=",
+            StaticToken::SlashEqual => "/=",
+            StaticToken::PercentEqual => "%=",
+            StaticToken::AmpersandEqual => "&=",
+            StaticToken::PipeEqual => "|=",
+            StaticToken::CaretEqual => "^=",
+            StaticToken::LeftShiftEqual => "<<=",
+            StaticToken::RightShiftEqual => ">>=",
+
+            // Increment/Decrement
+            StaticToken::PlusPlus => "++",
+            StaticToken::MinusMinus => "--",
+
+            // Member access
+            StaticToken::Dot => ".",
+            StaticToken::Arrow => "->",
+
+            // Other
+            StaticToken::Ellipsis => "...",
+            StaticToken::Hash => "#",
+            StaticToken::DoubleHash => "##",
         }
     }
 }
@@ -84,6 +177,66 @@ pub const ALL_KEYWORDS: &[StaticToken] = &[
     StaticToken::Return,
     StaticToken::Void,
     StaticToken::While,
+];
+
+/// Three-character punctuators
+pub const THREE_CHAR_PUNCTUATORS: &[StaticToken] = &[
+    StaticToken::LeftShiftEqual,  // <<=
+    StaticToken::RightShiftEqual, // >>=
+    StaticToken::Ellipsis,        // ...
+];
+
+/// Two-character punctuators
+pub const TWO_CHAR_PUNCTUATORS: &[StaticToken] = &[
+    StaticToken::LessThanOrEqual,    // <=
+    StaticToken::GreaterThanOrEqual, // >=
+    StaticToken::EqualEqual,         // ==
+    StaticToken::NotEqual,           // !=
+    StaticToken::LeftShift,          // <<
+    StaticToken::RightShift,         // >>
+    StaticToken::LogicalAnd,         // &&
+    StaticToken::LogicalOr,          // ||
+    StaticToken::PlusPlus,           // ++
+    StaticToken::MinusMinus,         // --
+    StaticToken::PlusEqual,          // +=
+    StaticToken::MinusEqual,         // -=
+    StaticToken::StarEqual,          // *=
+    StaticToken::SlashEqual,         // /=
+    StaticToken::PercentEqual,       // %=
+    StaticToken::AmpersandEqual,     // &=
+    StaticToken::PipeEqual,          // |=
+    StaticToken::CaretEqual,         // ^=
+    StaticToken::Arrow,              // ->
+    StaticToken::DoubleHash,         // ##
+];
+
+/// Single-character punctuators
+pub const ONE_CHAR_PUNCTUATORS: &[StaticToken] = &[
+    StaticToken::Semicolon,   // ;
+    StaticToken::LBrace,      // {
+    StaticToken::RBrace,      // }
+    StaticToken::LParen,      // (
+    StaticToken::RParen,      // )
+    StaticToken::LBracket,    // [
+    StaticToken::RBracket,    // ]
+    StaticToken::Comma,       // ,
+    StaticToken::Colon,       // :
+    StaticToken::Question,    // ?
+    StaticToken::Plus,        // +
+    StaticToken::Minus,       // -
+    StaticToken::Star,        // *
+    StaticToken::Slash,       // /
+    StaticToken::Percent,     // %
+    StaticToken::Ampersand,   // &
+    StaticToken::Pipe,        // |
+    StaticToken::Caret,       // ^
+    StaticToken::Tilde,       // ~
+    StaticToken::Not,         // !
+    StaticToken::LessThan,    // <
+    StaticToken::GreaterThan, // >
+    StaticToken::Equal,       // =
+    StaticToken::Dot,         // .
+    StaticToken::Hash,        // #
 ];
 
 /// Span represents the location information of a token in the source code

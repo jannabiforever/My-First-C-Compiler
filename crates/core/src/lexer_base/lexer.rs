@@ -6,7 +6,6 @@ use crate::{
     error::{CompilerError, IntoCompilerError},
     grammar::*,
     lexer_base::LexError,
-    t,
 };
 
 static WORD_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^\w+").unwrap());
@@ -71,37 +70,39 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn next_symbolic_token(&self) -> Option<TokenType<'a>> {
+    /// Try to match punctuators of a specific length from the remaining source
+    fn try_match_punctuators(
+        &self,
+        len: usize,
+        punctuators: &[StaticToken],
+    ) -> Option<TokenType<'a>> {
         let remaining = self.remaining();
+        if remaining.len() < len {
+            return None;
+        }
 
-        // Check for two-character operators first
-        if remaining.len() >= 2 {
-            let two_char = &remaining[..2];
-            match two_char {
-                "<=" => return Some(t!("<=")),
-                ">=" => return Some(t!(">=")),
-                "==" => return Some(t!("==")),
-                "!=" => return Some(t!("!=")),
-                _ => {}
+        let slice = &remaining[..len];
+        for &punct in punctuators {
+            if punct.as_str() == slice {
+                return Some(TokenType::Static(punct));
             }
         }
+        None
+    }
 
-        // Check for single-character operators
-        match remaining.chars().next() {
-            Some(';') => Some(t!(";")),
-            Some('{') => Some(t!("{")),
-            Some('}') => Some(t!("}")),
-            Some('(') => Some(t!("(")),
-            Some(')') => Some(t!(")")),
-            Some('-') => Some(t!("-")),
-            Some('+') => Some(t!("+")),
-            Some('*') => Some(t!("*")),
-            Some('/') => Some(t!("/")),
-            Some('!') => Some(t!("!")),
-            Some('<') => Some(t!("<")),
-            Some('>') => Some(t!(">")),
-            _ => None,
+    fn next_symbolic_token(&self) -> Option<TokenType<'a>> {
+        // Try three-character punctuators first
+        if let Some(token) = self.try_match_punctuators(3, THREE_CHAR_PUNCTUATORS) {
+            return Some(token);
         }
+
+        // Try two-character punctuators
+        if let Some(token) = self.try_match_punctuators(2, TWO_CHAR_PUNCTUATORS) {
+            return Some(token);
+        }
+
+        // Try single-character punctuators
+        self.try_match_punctuators(1, ONE_CHAR_PUNCTUATORS)
     }
 }
 
@@ -182,6 +183,7 @@ impl<'a> Iterator for Lexer<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::t;
 
     fn test_lexer_success(
         input: &str,
@@ -263,8 +265,9 @@ mod tests {
             Lexer::new("int main() #$").collect();
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err.error, LexError::UnexpectedCharacter('#'));
-        assert_eq!(err.span.start, 11);
+        // '#' is now a valid punctuator, so '$' is the unexpected character
+        assert_eq!(err.error, LexError::UnexpectedCharacter('$'));
+        assert_eq!(err.span.start, 12);
     }
 
     #[test]

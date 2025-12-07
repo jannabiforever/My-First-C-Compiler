@@ -1,6 +1,71 @@
 /// macro for tokenizing symbols & keywords
 #[macro_export]
 macro_rules! t {
+    // Keywords
+    ("int") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::Int)
+    };
+    ("void") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::Void)
+    };
+    ("return") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::Return)
+    };
+    ("if") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::If)
+    };
+    ("else") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::Else)
+    };
+    ("while") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::While)
+    };
+    ("do") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::Do)
+    };
+    ("for") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::For)
+    };
+    ("break") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::Break)
+    };
+    ("continue") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::Continue)
+    };
+
+    // Grouping & Delimiters
+    (";") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::Semicolon)
+    };
+    ("(") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::LParen)
+    };
+    (")") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::RParen)
+    };
+    ("{") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::LBrace)
+    };
+    ("}") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::RBrace)
+    };
+    ("[") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::LBracket)
+    };
+    ("]") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::RBracket)
+    };
+    (",") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::Comma)
+    };
+    (":") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::Colon)
+    };
+    ("?") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::Question)
+    };
+
+    // Arithmetic operators
     ("+") => {
         $crate::grammar::TokenType::Static($crate::grammar::StaticToken::Plus)
     };
@@ -13,33 +78,42 @@ macro_rules! t {
     ("/") => {
         $crate::grammar::TokenType::Static($crate::grammar::StaticToken::Slash)
     };
+    ("%") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::Percent)
+    };
+
+    // Bitwise operators
+    ("&") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::Ampersand)
+    };
+    ("|") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::Pipe)
+    };
+    ("^") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::Caret)
+    };
+    ("~") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::Tilde)
+    };
+    ("<<") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::LeftShift)
+    };
+    (">>") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::RightShift)
+    };
+
+    // Logical operators
     ("!") => {
         $crate::grammar::TokenType::Static($crate::grammar::StaticToken::Not)
     };
-    (";") => {
-        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::Semicolon)
+    ("&&") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::LogicalAnd)
     };
-    ("{") => {
-        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::LBrace)
+    ("||") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::LogicalOr)
     };
-    ("}") => {
-        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::RBrace)
-    };
-    ("(") => {
-        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::LParen)
-    };
-    (")") => {
-        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::RParen)
-    };
-    ("int") => {
-        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::Int)
-    };
-    ("void") => {
-        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::Void)
-    };
-    ("return") => {
-        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::Return)
-    };
+
+    // Comparison operators
     ("<") => {
         $crate::grammar::TokenType::Static($crate::grammar::StaticToken::LessThan)
     };
@@ -58,25 +132,66 @@ macro_rules! t {
     ("!=") => {
         $crate::grammar::TokenType::Static($crate::grammar::StaticToken::NotEqual)
     };
-    ("if") => {
-        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::If)
+
+    // Assignment operators
+    ("=") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::Equal)
     };
-    ("else") => {
-        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::Else)
+    ("+=") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::PlusEqual)
     };
-    ("while") => {
-        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::While)
+    ("-=") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::MinusEqual)
     };
-    ("do") => {
-        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::Do)
+    ("*=") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::StarEqual)
     };
-    ("break") => {
-        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::Break)
+    ("/=") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::SlashEqual)
     };
-    ("continue") => {
-        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::Continue)
+    ("%=") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::PercentEqual)
     };
-    ("for") => {
-        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::For)
+    ("&=") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::AmpersandEqual)
+    };
+    ("|=") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::PipeEqual)
+    };
+    ("^=") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::CaretEqual)
+    };
+    ("<<=") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::LeftShiftEqual)
+    };
+    (">>=") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::RightShiftEqual)
+    };
+
+    // Increment/Decrement
+    ("++") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::PlusPlus)
+    };
+    ("--") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::MinusMinus)
+    };
+
+    // Member access
+    (".") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::Dot)
+    };
+    ("->") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::Arrow)
+    };
+
+    // Other
+    ("...") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::Ellipsis)
+    };
+    ("#") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::Hash)
+    };
+    ("##") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::DoubleHash)
     };
 }
