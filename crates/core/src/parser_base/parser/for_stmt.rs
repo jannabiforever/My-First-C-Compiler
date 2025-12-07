@@ -8,20 +8,17 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_for_statement(&mut self) -> Result<ForStmt<'a>, CompilerParseError> {
         self.expect_multiple([t!("for"), t!("(")])?;
         let init = self
-            .peek_token()?
-            .is_some_and(|t| t.kind != t!(";"))
+            .eat_when(|tt| tt != &t!(";"))?
             .then(|| self.parse_expression())
             .transpose()?;
         self.expect(t!(";"))?;
         let cond = self
-            .peek_token()?
-            .is_some_and(|t| t.kind != t!(";"))
+            .eat_when(|tt| tt != &t!(";"))?
             .then(|| self.parse_expression())
             .transpose()?;
         self.expect(t!(";"))?;
         let post = self
-            .peek_token()?
-            .is_some_and(|t| t!(")") != t.kind)
+            .eat_when(|tt| tt != &t!(")"))?
             .then(|| self.parse_expression())
             .transpose()?;
         self.expect(t!(")"))?;

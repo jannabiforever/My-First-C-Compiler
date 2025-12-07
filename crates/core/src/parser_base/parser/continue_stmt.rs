@@ -10,7 +10,7 @@ impl<'a> Parser<'a> {
     ) -> Result<ContinueStmt<'a>, CompilerParseError> {
         self.expect(t!("continue"))?;
         self.expect(t!(";"))?;
-        Ok(ContinueStmt::new())
+        Ok(ContinueStmt::default())
     }
 }
 

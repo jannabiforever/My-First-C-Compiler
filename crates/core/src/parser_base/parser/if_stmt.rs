@@ -12,8 +12,8 @@ impl<'a> Parser<'a> {
         self.expect(t!(")"))?;
         let then_block = self.parse_statement()?;
         let else_block = self
-            .expect_optional(t!("else"))?
-            .map(|_| self.parse_statement())
+            .eat(t!("else"))?
+            .then(|| self.parse_statement())
             .transpose()?;
 
         Ok(IfStmt {

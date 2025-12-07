@@ -1,9 +1,11 @@
 mod block_stmt;
 mod break_stmt;
 mod continue_stmt;
+mod decl_stmt;
 mod expr;
 mod for_stmt;
 mod if_stmt;
+mod null_stmt;
 mod return_stmt;
 mod util;
 mod while_stmt;
@@ -83,6 +85,10 @@ impl<'a> Parser<'a> {
                 kind: t!("break"), ..
             }) => self.parse_break_statement().map(Into::into),
             Some(Token {
+                kind: t!("int") | t!("void"),
+                ..
+            }) => self.parse_declaration_statement().map(Into::into),
+            Some(Token {
                 kind: t!("continue"),
                 ..
             }) => self.parse_continue_statement().map(Into::into),
@@ -97,6 +103,7 @@ impl<'a> Parser<'a> {
             Some(Token {
                 kind: t!("while"), ..
             }) => self.parse_while_statement().map(Into::into),
+            Some(Token { kind: t!(";"), .. }) => self.parse_null_statement().map(Into::into),
             Some(Token { kind: t!("{"), .. }) => self.parse_block_statement().map(Into::into),
             Some(token) => {
                 let expr = self.parse_expression().map_err(|_| {

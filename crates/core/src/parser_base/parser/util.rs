@@ -73,6 +73,29 @@ impl<'a> Parser<'a> {
         }
     }
 
+    pub(super) fn eat(&mut self, expected: TokenType<'static>) -> Result<bool, CompilerParseError> {
+        match self.peek_token()? {
+            Some(token) if token.kind == expected => {
+                self.next_token()?;
+                Ok(true)
+            }
+            _ => Ok(false),
+        }
+    }
+
+    pub(super) fn eat_when<F>(&mut self, when: F) -> Result<bool, CompilerParseError>
+    where
+        F: FnOnce(&TokenType<'a>) -> bool,
+    {
+        match self.peek_token()? {
+            Some(token) if when(&token.kind) => {
+                self.next_token()?;
+                Ok(true)
+            }
+            _ => Ok(false),
+        }
+    }
+
     /// Consumes the next token from the lexer.
     pub(super) fn next_token(&mut self) -> Result<Option<Token<'a>>, CompilerParseError> {
         self.lexer.next().transpose().map_err(|e| e.convert_error())

@@ -19,14 +19,21 @@ statement_enum! {
         pub statements: Vec<Statement<'a>>,
     }
 
-    #[derive(Debug, Clone)]
+    #[derive(Debug, Clone, Default)]
     pub struct BreakStmt<'a> {
         _m: std::marker::PhantomData< &'a()> ,
     }
 
-    #[derive(Debug, Clone)]
+    #[derive(Debug, Clone, Default)]
     pub struct ContinueStmt<'a> {
         _m: std::marker::PhantomData< &'a()> ,
+    }
+
+    #[derive(Debug, Clone)]
+    pub struct DeclarationStmt<'a> {
+        pub var_type: Type,
+        pub name: Cow<'a, str>,
+        pub initializer: Option<Expression<'a>>,
     }
 
     #[derive(Debug, Clone)]
@@ -55,6 +62,12 @@ statement_enum! {
         pub else_block: Option<Box<Statement<'a>>>,
     }
 
+    /// Represents a statement with one semicolon.
+    #[derive(Debug, Clone, Default)]
+    pub struct NullStmt<'a> {
+        _m: std::marker::PhantomData< &'a()>,
+    }
+
     #[derive(Debug, Clone)]
     pub struct ReturnStmt<'a> {
         pub expr: Expression<'a>,
@@ -64,21 +77,5 @@ statement_enum! {
     pub struct WhileStmt<'a> {
         pub cond: Expression<'a>,
         pub body: Box<Statement<'a>>,
-    }
-}
-
-impl<'a> BreakStmt<'a> {
-    pub fn new() -> Self {
-        BreakStmt {
-            _m: std::marker::PhantomData,
-        }
-    }
-}
-
-impl<'a> ContinueStmt<'a> {
-    pub fn new() -> Self {
-        ContinueStmt {
-            _m: std::marker::PhantomData,
-        }
     }
 }
