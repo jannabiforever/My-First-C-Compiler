@@ -4,13 +4,15 @@ use std::borrow::Cow;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StaticToken {
     // Keywords
-    Int,
-    Void,
-    Return,
-    If,
-    Else,
-    While,
+    Break,
+    Continue,
     Do,
+    Else,
+    If,
+    Int,
+    Return,
+    Void,
+    While,
 
     // Symbols
     Semicolon,
@@ -38,13 +40,15 @@ pub enum StaticToken {
 impl StaticToken {
     pub const fn as_str(&self) -> &'static str {
         match self {
-            StaticToken::Int => "int",
-            StaticToken::Void => "void",
-            StaticToken::Return => "return",
-            StaticToken::If => "if",
-            StaticToken::Else => "else",
-            StaticToken::While => "while",
+            StaticToken::Break => "break",
+            StaticToken::Continue => "continue",
             StaticToken::Do => "do",
+            StaticToken::Else => "else",
+            StaticToken::If => "if",
+            StaticToken::Int => "int",
+            StaticToken::Return => "return",
+            StaticToken::Void => "void",
+            StaticToken::While => "while",
 
             StaticToken::Semicolon => ";",
             StaticToken::LParen => "(",
@@ -68,13 +72,15 @@ impl StaticToken {
 }
 
 pub const ALL_KEYWORDS: &[StaticToken] = &[
-    StaticToken::Int,
-    StaticToken::Void,
-    StaticToken::Return,
-    StaticToken::If,
-    StaticToken::Else,
-    StaticToken::While,
+    StaticToken::Break,
+    StaticToken::Continue,
     StaticToken::Do,
+    StaticToken::Else,
+    StaticToken::If,
+    StaticToken::Int,
+    StaticToken::Return,
+    StaticToken::Void,
+    StaticToken::While,
 ];
 
 /// Span represents the location information of a token in the source code

@@ -20,6 +20,16 @@ statement_enum! {
     }
 
     #[derive(Debug, Clone)]
+    pub struct BreakStmt<'a> {
+        _m: std::marker::PhantomData< &'a()> ,
+    }
+
+    #[derive(Debug, Clone)]
+    pub struct ContinueStmt<'a> {
+        _m: std::marker::PhantomData< &'a()> ,
+    }
+
+    #[derive(Debug, Clone)]
     pub struct DoWhileStmt<'a> {
         pub cond: Expression<'a>,
         pub body: Box<Statement<'a>>,
@@ -41,5 +51,21 @@ statement_enum! {
     pub struct WhileStmt<'a> {
         pub cond: Expression<'a>,
         pub body: Box<Statement<'a>>,
+    }
+}
+
+impl<'a> BreakStmt<'a> {
+    pub fn new() -> Self {
+        BreakStmt {
+            _m: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<'a> ContinueStmt<'a> {
+    pub fn new() -> Self {
+        ContinueStmt {
+            _m: std::marker::PhantomData,
+        }
     }
 }

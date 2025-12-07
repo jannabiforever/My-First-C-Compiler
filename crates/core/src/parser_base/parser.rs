@@ -77,7 +77,13 @@ where
     /// Parse a statement
     fn parse_statement(&mut self) -> Result<Statement<'a>, CompilerParseError> {
         match self.peek_token()? {
-            Some(Token { kind: t!("{"), .. }) => self.parse_block_statement().map(Into::into),
+            Some(Token {
+                kind: t!("break"), ..
+            }) => self.parse_break_statement().map(Into::into),
+            Some(Token {
+                kind: t!("continue"),
+                ..
+            }) => self.parse_continue_statement().map(Into::into),
             Some(Token { kind: t!("do"), .. }) => self.parse_do_while_statement().map(Into::into),
             Some(Token { kind: t!("if"), .. }) => self.parse_if_statement().map(Into::into),
             Some(Token {
@@ -86,11 +92,24 @@ where
             Some(Token {
                 kind: t!("while"), ..
             }) => self.parse_while_statement().map(Into::into),
+            Some(Token { kind: t!("{"), .. }) => self.parse_block_statement().map(Into::into),
             Some(token) => {
                 Err(ParseError::expected_statement(token.kind.clone()).with_span(token.span))
             }
             None => Err(ParseError::expected_statement_eof().with_span(self.eof_span)),
         }
+    }
+
+    fn parse_break_statement(&mut self) -> Result<BreakStmt<'a>, CompilerParseError> {
+        self.expect(t!("break"))?;
+        self.expect(t!(";"))?;
+        Ok(BreakStmt::new())
+    }
+
+    fn parse_continue_statement(&mut self) -> Result<ContinueStmt<'a>, CompilerParseError> {
+        self.expect(t!("continue"))?;
+        self.expect(t!(";"))?;
+        Ok(ContinueStmt::new())
     }
 
     /// Parse a block: { statement* }
@@ -1254,5 +1273,12 @@ mod tests {
         let input = "int main(void) { if (1) { return 0; } else }";
         let result = parse_program(input);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_continue_and_break() {
+        let input = "int main(void) { continue; break; }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
     }
 }

@@ -70,4 +70,10 @@ macro_rules! t {
     ("do") => {
         $crate::grammar::TokenType::Static($crate::grammar::StaticToken::Do)
     };
+    ("break") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::Break)
+    };
+    ("continue") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::Continue)
+    };
 }
