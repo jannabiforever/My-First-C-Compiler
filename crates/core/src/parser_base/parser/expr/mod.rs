@@ -61,6 +61,23 @@ impl<'a> Parser<'a> {
         min_bp: u8,
     ) -> Result<Expression<'a>, CompilerParseError> {
         while let Some(token) = self.peek_token()? {
+            // Try to parse as function call
+            if matches!(token.kind, t!("(")) {
+                // Function calls have highest precedence (postfix operator)
+                let left_bp = BindingPower::Postfix.postfix();
+
+                if left_bp < min_bp {
+                    break;
+                }
+
+                let args = self.parse_function_call_arguments()?;
+                lhs = Expression::FunctionCall {
+                    callee: Box::new(lhs),
+                    args,
+                };
+                continue;
+            }
+
             // Try to parse as binary operator
             if let Some(op) = BinaryOp::from_token_type(&token.kind) {
                 let (left_bp, right_bp) = op.infix_binding_power();

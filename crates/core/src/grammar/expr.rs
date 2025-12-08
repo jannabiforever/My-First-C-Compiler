@@ -43,17 +43,21 @@ pub enum BinaryOp {
 
 impl BinaryOp {
     pub const fn infix_binding_power(&self) -> (u8, u8) {
-        match self {
+        use BindingPower::*;
+
+        let bp = match self {
             // Multiplicative operators (highest precedence)
-            BinaryOp::Multiply | BinaryOp::Divide => (11, 12),
+            BinaryOp::Multiply | BinaryOp::Divide => Multiplicative,
             // Additive operators
-            BinaryOp::Add | BinaryOp::Subtract => (9, 10),
+            BinaryOp::Add | BinaryOp::Subtract => Additive,
             // Relational operators
-            BinaryOp::LT | BinaryOp::GT | BinaryOp::LTE | BinaryOp::GTE => (7, 8),
+            BinaryOp::LT | BinaryOp::GT | BinaryOp::LTE | BinaryOp::GTE => Relational,
             // Equality operators
-            BinaryOp::EQ | BinaryOp::NEQ => (5, 6),
-            // Assignment has lower precedence (handled separately)
-        }
+            BinaryOp::EQ | BinaryOp::NEQ => Equality,
+        };
+
+        // Binary operators are left-associative
+        bp.infix(false)
     }
 
     pub const fn from_token_type(token: &TokenType) -> Option<Self> {
@@ -110,10 +114,10 @@ impl AssignOp {
     /// This gives it the lowest precedence of all operators
     #[inline]
     pub const fn infix_binding_power(&self) -> (u8, u8) {
-        // All assignment operators have the same precedence
-        // Right-associative: (left_bp=1, right_bp=0)
+        // All assignment operators have the same precedence and are right-associative
         // This means: if we see another assignment on the right, we parse it first
-        (1, 0)
+        // Example: a = b = c parses as a = (b = c)
+        BindingPower::Assignment.infix(true)
     }
 
     pub const fn from_token_type(token: &TokenType) -> Option<Self> {
