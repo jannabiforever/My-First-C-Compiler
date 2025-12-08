@@ -8,11 +8,11 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_do_while_statement(
         &mut self,
     ) -> Result<DoWhileStmt<'a>, CompilerParseError> {
-        self.expect(t!("do"))?;
+        self.expect_token(t!("do"))?;
         let body = self.parse_statement()?;
-        self.expect_multiple([t!("while"), t!("(")])?;
+        self.expect_sequence_of_tokens([t!("while"), t!("(")])?;
         let condition = self.parse_expression()?;
-        self.expect_multiple([t!(")"), t!(";")])?;
+        self.expect_sequence_of_tokens([t!(")"), t!(";")])?;
         Ok(DoWhileStmt {
             body: Box::new(body),
             cond: condition,
@@ -20,9 +20,9 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_while_statement(&mut self) -> Result<WhileStmt<'a>, CompilerParseError> {
-        self.expect_multiple([t!("while"), t!("(")])?;
+        self.expect_sequence_of_tokens([t!("while"), t!("(")])?;
         let cond = self.parse_expression()?;
-        self.expect(t!(")"))?;
+        self.expect_token(t!(")"))?;
         let body = self.parse_statement()?;
         Ok(WhileStmt {
             cond,

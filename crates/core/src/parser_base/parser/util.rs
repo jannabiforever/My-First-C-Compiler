@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use super::Parser;
 use crate::{
     error::IntoCompilerError,
@@ -8,70 +6,79 @@ use crate::{
 };
 
 impl<'a> Parser<'a> {
-    /// Expect a specific token
-    pub(super) fn expect(
+    /// Expect a token with specific kind
+    pub(super) fn expect_token(
         &mut self,
         expected: TokenType<'static>,
     ) -> Result<(), CompilerParseError> {
         match self.next_token()? {
             Some(token) if token.kind == expected => Ok(()),
-            Some(unexpected) => {
-                Err(ParseError::unexpected_token(expected, unexpected.kind)
-                    .with_span(unexpected.span))
+            else_peek_result => {
+                let tt = else_peek_result.map(|s| s.kind);
+                Err(ParseError::unexpected("unary operator", tt.as_ref()).with_span(self.eof_span))
             }
-            None => Err(ParseError::unexpected_eof(expected).with_span(self.eof_span)),
         }
     }
 
-    pub(super) fn expect_multiple<I>(&mut self, expected: I) -> Result<(), CompilerParseError>
+    /// Expect multiple specific tokens in sequence
+    pub(super) fn expect_sequence_of_tokens<I>(
+        &mut self,
+        expected: I,
+    ) -> Result<(), CompilerParseError>
     where
         I: IntoIterator<Item = TokenType<'static>>,
     {
         for token_type in expected.into_iter() {
-            self.expect(token_type)?;
+            self.expect_token(token_type)?;
         }
         Ok(())
     }
 
-    /// Expect an identifier token
-    pub(super) fn expect_identifier(&mut self) -> Result<Cow<'a, str>, CompilerParseError> {
-        match self.next_token()? {
-            Some(Token {
-                kind: TokenType::Identifier(name),
-                ..
-            }) => Ok(name),
-            Some(Token { kind, span }) => {
-                Err(ParseError::expected_identifier(kind).with_span(span))
+    /// Consumes the next token and attempts to convert it using the provided checker.
+    ///
+    /// This method peeks the upcoming token, advances the cursor, and passes the
+    /// token kind to `checker`. If the checker returns `Some(_)`, the value is
+    /// returned. If the checker returns `None`, an `UnexpectedToken` error is raised
+    /// with the given `description`.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `ParseError::UnexpectedToken` if the next token does not match the
+    /// expected condition.
+    /// Returns a `ParseError::UnexpectedEof` if no more tokens are available.
+    ///
+    /// # Parameters
+    ///
+    /// - `checker`: A function that receives a `TokenType` and returns `Option<R>`.
+    /// - `description`: A human-readable description used to construct the error
+    ///   message (e.g. `"type"`, `"identifier"`, etc.)
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// self.expect_with(Type::from_token_type, "type")
+    /// ```
+    pub(super) fn expect_with<F, R>(
+        &mut self,
+        try_checker: F,
+        description: &str,
+    ) -> Result<R, CompilerParseError>
+    where
+        F: FnOnce(&TokenType<'a>) -> Option<R>,
+    {
+        match self.peek_token()? {
+            Some(token) => {
+                self.next_token()?;
+                try_checker(&token.kind).ok_or(
+                    ParseError::unexpected_token(description, &token.kind).with_span(token.span),
+                )
             }
-            None => Err(ParseError::expected_identifier_eof().with_span(self.eof_span)),
+            None => Err(ParseError::unexpected_eof(description).with_span(self.eof_span)),
         }
     }
 
     /// Optionally consume a token if it matches
-    pub(super) fn expect_optional(
-        &mut self,
-        expected: TokenType<'static>,
-    ) -> Result<Option<Token<'a>>, CompilerParseError> {
-        match self.peek_token()? {
-            Some(token) if token.kind == expected => {
-                self.next_token()?;
-                Ok(Some(token))
-            }
-            _ => Ok(None),
-        }
-    }
-
-    pub(super) fn expect_type(&mut self) -> Result<Type, CompilerParseError> {
-        match self.peek_token()? {
-            Some(token) => {
-                self.next_token()?;
-                Type::from_token_type(&token.kind)
-                    .ok_or(ParseError::expected_type(token.kind).with_span(token.span))
-            }
-            None => Err(ParseError::expected_type_eof().with_span(self.eof_span)),
-        }
-    }
-
+    /// and return boolean
     pub(super) fn eat(&mut self, expected: TokenType<'static>) -> Result<bool, CompilerParseError> {
         match self.peek_token()? {
             Some(token) if token.kind == expected => {

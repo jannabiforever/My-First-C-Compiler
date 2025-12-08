@@ -7,9 +7,9 @@ use crate::{
 impl<'a> Parser<'a> {
     /// Parse an if statement: if (condition) { body } else { body }
     pub(super) fn parse_if_statement(&mut self) -> Result<IfStmt<'a>, CompilerParseError> {
-        self.expect_multiple([t!("if"), t!("(")])?;
+        self.expect_sequence_of_tokens([t!("if"), t!("(")])?;
         let condition = self.parse_expression()?;
-        self.expect(t!(")"))?;
+        self.expect_token(t!(")"))?;
         let then_block = self.parse_statement()?;
         let else_block = self
             .eat(t!("else"))?

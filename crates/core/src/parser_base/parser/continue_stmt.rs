@@ -8,8 +8,8 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_continue_statement(
         &mut self,
     ) -> Result<ContinueStmt<'a>, CompilerParseError> {
-        self.expect(t!("continue"))?;
-        self.expect(t!(";"))?;
+        self.expect_token(t!("continue"))?;
+        self.expect_token(t!(";"))?;
         Ok(ContinueStmt::default())
     }
 }

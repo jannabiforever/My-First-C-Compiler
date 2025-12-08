@@ -2,7 +2,7 @@ use thiserror::Error;
 
 use crate::{
     error::{CompilerError, IntoCompilerError},
-    grammar::TokenType,
+    grammar::{Span, Token, TokenType},
     lexer_base::LexError,
 };
 
@@ -21,86 +21,46 @@ pub enum ParseError {
 }
 
 impl ParseError {
-    /// Create an error for when we expected a specific token but found another
-    pub fn unexpected_token(expected: TokenType<'static>, found: TokenType) -> Self {
-        ParseError::UnexpectedToken {
-            expected: format!("{:?}", expected),
-            found: format!("{:?}", found),
-        }
-    }
-
     /// Create an error for when we expected a specific token but hit EOF
-    pub fn unexpected_eof(expected: TokenType<'static>) -> Self {
+    pub fn unexpected_eof<E: std::fmt::Display>(expected: E) -> Self {
         ParseError::UnexpectedEof {
-            expected: format!("{:?}", expected),
+            expected: expected.to_string(),
         }
     }
 
-    /// Helper for expecting an identifier specifically
-    pub fn expected_identifier(found: TokenType) -> Self {
+    pub fn unexpected_token<E: std::fmt::Display>(expected: E, found: &TokenType) -> Self {
         ParseError::UnexpectedToken {
-            expected: "identifier".to_string(),
-            found: format!("{:?}", found),
+            expected: expected.to_string(),
+            found: found.to_string(),
         }
     }
 
-    /// Helper for expecting an identifier but hit EOF
-    pub fn expected_identifier_eof() -> Self {
-        ParseError::UnexpectedEof {
-            expected: "identifier".to_string(),
-        }
-    }
-
-    pub fn expected_type(found: TokenType) -> Self {
-        ParseError::UnexpectedToken {
-            expected: "type".to_string(),
-            found: format!("{:?}", found),
-        }
-    }
-
-    pub fn expected_type_eof() -> Self {
-        ParseError::UnexpectedEof {
-            expected: "type".to_string(),
-        }
-    }
-
-    /// Helper for expecting an expression
-    pub fn expected_expression(found: TokenType) -> Self {
-        ParseError::UnexpectedToken {
-            expected: "expression".to_string(),
-            found: format!("{:?}", found),
-        }
-    }
-
-    /// Helper for expecting an expression but hit EOF
-    pub fn expected_expression_eof() -> Self {
-        ParseError::UnexpectedEof {
-            expected: "expression".to_string(),
-        }
-    }
-
-    /// Helper for expecting a statement
-    pub fn expected_statement(found: TokenType) -> Self {
-        ParseError::UnexpectedToken {
-            expected: "statement".to_string(),
-            found: format!("{:?}", found),
-        }
-    }
-
-    /// Helper for expecting a statement but hit EOF
-    pub fn expected_statement_eof() -> Self {
-        ParseError::UnexpectedEof {
-            expected: "statement".to_string(),
-        }
-    }
-
-    /// Helper for generic expected string
-    pub fn unexpected_eof_with_message(expected: impl Into<String>) -> Self {
-        ParseError::UnexpectedEof {
-            expected: expected.into(),
+    pub fn unexpected<E: std::fmt::Display>(expected: E, found: Option<&TokenType>) -> Self {
+        match found {
+            Some(found) => Self::unexpected_token(expected, found),
+            None => Self::unexpected_eof(expected),
         }
     }
 }
 
 impl IntoCompilerError for ParseError {}
 pub type CompilerParseError = CompilerError<ParseError>;
+
+impl CompilerError<ParseError> {
+    pub fn from_peeked_token<S: std::fmt::Display>(
+        expected: S,
+        peeked_token: Option<Token>,
+        eof_span: Span,
+    ) -> Self {
+        let parse_error = match peeked_token {
+            Some(token) => ParseError::UnexpectedToken {
+                expected: expected.to_string(),
+                found: format!("{:?}", token),
+            },
+            None => ParseError::UnexpectedEof {
+                expected: expected.to_string(),
+            },
+        };
+        CompilerError::new(parse_error, eof_span)
+    }
+}

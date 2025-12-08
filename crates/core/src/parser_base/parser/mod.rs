@@ -10,7 +10,7 @@ mod return_stmt;
 mod util;
 mod while_stmt;
 
-use std::iter::Peekable;
+use std::{borrow::Cow, iter::Peekable};
 
 use crate::{
     error::IntoCompilerError,
@@ -46,7 +46,7 @@ impl<'a> Parser<'a> {
 
         if functions.is_empty() {
             return Err(
-                ParseError::unexpected_eof_with_message("function definition")
+                ParseError::unexpected_eof("function or variable declaration")
                     .with_span(self.eof_span),
             );
         }
@@ -56,26 +56,28 @@ impl<'a> Parser<'a> {
 
     /// Parse a function definition: int name(void) { ... }
     fn parse_function(&mut self) -> Result<FuncDef<'a>, CompilerParseError> {
-        // Expect return type
-        let return_type = self.expect_type()?;
-
-        // Function name
-        let name = self.expect_identifier()?;
-
-        // Parameters
-        self.expect(t!("("))?;
-        self.expect_optional(t!("void"))?; // For now, only void params
-        self.expect(t!(")"))?;
-
-        // Function body (block)
+        let (return_type, name) = self.parse_typed_identifier()?;
+        let params = self.parse_function_parameters()?;
         let body = self.parse_block_statement()?;
 
         Ok(FuncDef {
             return_type,
             name,
-            params: Vec::new(),
+            params,
             body,
         })
+    }
+
+    fn parse_function_parameters(
+        &mut self,
+    ) -> Result<Vec<(Type, Cow<'a, str>)>, CompilerParseError> {
+        self.expect_token(t!("("))?;
+        let mut params = Vec::new();
+        while !self.eat(t!(")"))? {
+            params.push(self.parse_typed_identifier()?);
+            self.eat(t!(","))?;
+        }
+        Ok(params)
     }
 
     /// Parse a statement
@@ -106,13 +108,33 @@ impl<'a> Parser<'a> {
             Some(Token { kind: t!("{"), .. }) => self.parse_block_statement().map(Into::into),
             Some(token) => {
                 let expr = self.parse_expression().map_err(|_| {
-                    ParseError::expected_statement(token.kind.clone()).with_span(token.span)
+                    ParseError::unexpected_token("statement", &token.kind).with_span(token.span)
                 })?;
-                self.expect(t!(";"))?;
+                self.expect_token(t!(";"))?;
                 Ok(ExprStmt { expr }.into())
             }
-            None => Err(ParseError::expected_statement_eof().with_span(self.eof_span)),
+            None => Err(ParseError::unexpected_eof("statement").with_span(self.eof_span)),
         }
+    }
+
+    /// Parses an identifier token
+    pub(super) fn parse_identifier(&mut self) -> Result<Cow<'a, str>, CompilerParseError> {
+        self.expect_with(
+            |tt| match tt {
+                TokenType::Identifier(name) => Some(name.clone()),
+                _ => None,
+            },
+            "identifier",
+        )
+    }
+
+    /// Parses a type token and an identifier token
+    pub(super) fn parse_typed_identifier(
+        &mut self,
+    ) -> Result<(Type, Cow<'a, str>), CompilerParseError> {
+        let ty = self.expect_with(Type::from_token_type, "type")?;
+        let name = self.parse_identifier()?;
+        Ok((ty, name))
     }
 }
 

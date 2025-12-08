@@ -9,7 +9,7 @@ use crate::grammar::{Expression, Type};
 pub struct FuncDef<'a> {
     pub return_type: Type,
     pub name: Cow<'a, str>,
-    pub params: Vec<Cow<'a, str>>,
+    pub params: Vec<(Type, Cow<'a, str>)>,
     pub body: BlockStmt<'a>,
 }
 

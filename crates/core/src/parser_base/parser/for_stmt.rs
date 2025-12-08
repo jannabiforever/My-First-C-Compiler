@@ -6,7 +6,7 @@ use crate::{
 
 impl<'a> Parser<'a> {
     pub(super) fn parse_for_statement(&mut self) -> Result<ForStmt<'a>, CompilerParseError> {
-        self.expect_multiple([t!("for"), t!("(")])?;
+        self.expect_sequence_of_tokens([t!("for"), t!("(")])?;
 
         // Parse init expression (optional)
         let init = match self.peek_token()? {
@@ -14,7 +14,7 @@ impl<'a> Parser<'a> {
             Some(_) => Some(self.parse_expression()?),
             None => None,
         };
-        self.expect(t!(";"))?;
+        self.expect_token(t!(";"))?;
 
         // Parse condition expression (optional)
         let cond = match self.peek_token()? {
@@ -22,7 +22,7 @@ impl<'a> Parser<'a> {
             Some(_) => Some(self.parse_expression()?),
             None => None,
         };
-        self.expect(t!(";"))?;
+        self.expect_token(t!(";"))?;
 
         // Parse post expression (optional)
         let post = match self.peek_token()? {
@@ -30,7 +30,7 @@ impl<'a> Parser<'a> {
             Some(_) => Some(self.parse_expression()?),
             None => None,
         };
-        self.expect(t!(")"))?;
+        self.expect_token(t!(")"))?;
 
         let body = self.parse_statement()?;
 

@@ -8,7 +8,7 @@ use crate::{
 impl<'a> Parser<'a> {
     /// Parse a block: { statement* }
     pub(super) fn parse_block_statement(&mut self) -> Result<BlockStmt<'a>, CompilerParseError> {
-        self.expect(t!("{"))?;
+        self.expect_token(t!("{"))?;
 
         let mut statements = Vec::new();
 
@@ -20,13 +20,14 @@ impl<'a> Parser<'a> {
                     statements.push(self.parse_statement()?);
                 }
                 None => {
-                    return Err(ParseError::unexpected_eof_with_message("'}' or statement")
-                        .with_span(self.eof_span));
+                    return Err(
+                        ParseError::unexpected_eof("'}' or statement").with_span(self.eof_span)
+                    );
                 }
             }
         }
 
-        self.expect(t!("}"))?;
+        self.expect_token(t!("}"))?;
         Ok(BlockStmt { statements })
     }
 }

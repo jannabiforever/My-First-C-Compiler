@@ -105,11 +105,31 @@ impl<'a> Parser<'a> {
                 continue;
             }
 
+            // Try to parse a function call
+            if token.kind == t!("(") {
+                let args = self.parse_function_call_arguments()?;
+                lhs = Expression::FunctionCall {
+                    callee: Box::new(lhs),
+                    args,
+                };
+                continue;
+            }
+
             // No operator found, stop
             break;
         }
 
         Ok(lhs)
+    }
+
+    fn parse_function_call_arguments(&mut self) -> Result<Vec<Expression<'a>>, CompilerParseError> {
+        self.expect_token(t!("("))?;
+        let mut args = Vec::new();
+        while !self.eat(t!(")"))? {
+            args.push(self.parse_expression()?);
+            self.eat(t!(","))?;
+        }
+        Ok(args)
     }
 }
 
@@ -766,6 +786,211 @@ mod tests {
                 }
             }
             _ => panic!("Expected assignment expression"),
+        }
+    }
+
+    // === Function Call Tests ===
+
+    #[test]
+    fn test_parse_function_call_no_args() {
+        let result = parse_expr("foo()");
+        assert!(result.is_ok());
+        match result.unwrap() {
+            Expression::FunctionCall { callee, args } => {
+                match *callee {
+                    Expression::Variable(name) => assert_eq!(name, "foo"),
+                    _ => panic!("Expected function name"),
+                }
+                assert_eq!(args.len(), 0);
+            }
+            _ => panic!("Expected function call expression"),
+        }
+    }
+
+    #[test]
+    fn test_parse_function_call_single_arg() {
+        let result = parse_expr("bar(42)");
+        assert!(result.is_ok());
+        match result.unwrap() {
+            Expression::FunctionCall { callee, args } => {
+                match *callee {
+                    Expression::Variable(name) => assert_eq!(name, "bar"),
+                    _ => panic!("Expected function name"),
+                }
+                assert_eq!(args.len(), 1);
+                assert!(matches!(args[0], Expression::Constant(42)));
+            }
+            _ => panic!("Expected function call expression"),
+        }
+    }
+
+    #[test]
+    fn test_parse_function_call_multiple_args() {
+        let result = parse_expr("add(1, 2, 3)");
+        assert!(result.is_ok());
+        match result.unwrap() {
+            Expression::FunctionCall { callee, args } => {
+                match *callee {
+                    Expression::Variable(name) => assert_eq!(name, "add"),
+                    _ => panic!("Expected function name"),
+                }
+                assert_eq!(args.len(), 3);
+                assert!(matches!(args[0], Expression::Constant(1)));
+                assert!(matches!(args[1], Expression::Constant(2)));
+                assert!(matches!(args[2], Expression::Constant(3)));
+            }
+            _ => panic!("Expected function call expression"),
+        }
+    }
+
+    #[test]
+    fn test_parse_function_call_with_expression_args() {
+        let result = parse_expr("calculate(1 + 2, x * 3)");
+        assert!(result.is_ok());
+        match result.unwrap() {
+            Expression::FunctionCall { callee, args } => {
+                match *callee {
+                    Expression::Variable(name) => assert_eq!(name, "calculate"),
+                    _ => panic!("Expected function name"),
+                }
+                assert_eq!(args.len(), 2);
+                // First argument: 1 + 2
+                match &args[0] {
+                    Expression::Binary { op, lhs, rhs } => {
+                        assert!(matches!(op, BinaryOp::Add));
+                        assert!(matches!(**lhs, Expression::Constant(1)));
+                        assert!(matches!(**rhs, Expression::Constant(2)));
+                    }
+                    _ => panic!("Expected binary expression as first argument"),
+                }
+                // Second argument: x * 3
+                match &args[1] {
+                    Expression::Binary { op, lhs, rhs } => {
+                        assert!(matches!(op, BinaryOp::Multiply));
+                        match &**lhs {
+                            Expression::Variable(name) => assert_eq!(name, "x"),
+                            _ => panic!("Expected variable in second argument"),
+                        }
+                        assert!(matches!(**rhs, Expression::Constant(3)));
+                    }
+                    _ => panic!("Expected binary expression as second argument"),
+                }
+            }
+            _ => panic!("Expected function call expression"),
+        }
+    }
+
+    #[test]
+    fn test_parse_nested_function_calls() {
+        // outer(inner(5))
+        let result = parse_expr("outer(inner(5))");
+        assert!(result.is_ok());
+        match result.unwrap() {
+            Expression::FunctionCall { callee, args } => {
+                match *callee {
+                    Expression::Variable(name) => assert_eq!(name, "outer"),
+                    _ => panic!("Expected outer function name"),
+                }
+                assert_eq!(args.len(), 1);
+                // Argument should be inner(5)
+                match &args[0] {
+                    Expression::FunctionCall { callee, args } => {
+                        match &**callee {
+                            Expression::Variable(name) => assert_eq!(name, "inner"),
+                            _ => panic!("Expected inner function name"),
+                        }
+                        assert_eq!(args.len(), 1);
+                        assert!(matches!(args[0], Expression::Constant(5)));
+                    }
+                    _ => panic!("Expected nested function call"),
+                }
+            }
+            _ => panic!("Expected function call expression"),
+        }
+    }
+
+    #[test]
+    fn test_parse_function_call_in_binary_expression() {
+        // foo(1) + bar(2) should be parsed as (foo(1)) + (bar(2))
+        let result = parse_expr("foo(1) + bar(2)");
+        assert!(result.is_ok());
+        match result.unwrap() {
+            Expression::Binary { op, lhs, rhs } => {
+                assert!(matches!(op, BinaryOp::Add));
+                // Left side: foo(1)
+                match *lhs {
+                    Expression::FunctionCall { callee, args } => {
+                        match *callee {
+                            Expression::Variable(name) => assert_eq!(name, "foo"),
+                            _ => panic!("Expected foo function"),
+                        }
+                        assert_eq!(args.len(), 1);
+                        assert!(matches!(args[0], Expression::Constant(1)));
+                    }
+                    _ => panic!("Expected function call on left side"),
+                }
+                // Right side: bar(2)
+                match *rhs {
+                    Expression::FunctionCall { callee, args } => {
+                        match *callee {
+                            Expression::Variable(name) => assert_eq!(name, "bar"),
+                            _ => panic!("Expected bar function"),
+                        }
+                        assert_eq!(args.len(), 1);
+                        assert!(matches!(args[0], Expression::Constant(2)));
+                    }
+                    _ => panic!("Expected function call on right side"),
+                }
+            }
+            _ => panic!("Expected binary expression"),
+        }
+    }
+
+    #[test]
+    fn test_parse_function_call_in_assignment() {
+        // x = getValue(10) should be parsed as x = (getValue(10))
+        let result = parse_expr("x = getValue(10)");
+        assert!(result.is_ok());
+        match result.unwrap() {
+            Expression::Assignment { op, lvalue, rvalue } => {
+                assert!(matches!(op, AssignOp::Assign));
+                match *lvalue {
+                    Expression::Variable(name) => assert_eq!(name, "x"),
+                    _ => panic!("Expected variable on left side"),
+                }
+                // Right side should be getValue(10)
+                match *rvalue {
+                    Expression::FunctionCall { callee, args } => {
+                        match *callee {
+                            Expression::Variable(name) => assert_eq!(name, "getValue"),
+                            _ => panic!("Expected getValue function"),
+                        }
+                        assert_eq!(args.len(), 1);
+                        assert!(matches!(args[0], Expression::Constant(10)));
+                    }
+                    _ => panic!("Expected function call on right side"),
+                }
+            }
+            _ => panic!("Expected assignment expression"),
+        }
+    }
+
+    #[test]
+    fn test_parse_function_call_with_trailing_comma() {
+        // foo(1,2,) should parse successfully
+        let result = parse_expr("foo(1, 2,)");
+        assert!(result.is_ok());
+        match result.unwrap() {
+            Expression::FunctionCall { callee, args } => {
+                match *callee {
+                    Expression::Variable(name) => assert_eq!(name, "foo"),
+                    _ => panic!("Expected function name"),
+                }
+                assert_eq!(args.len(), 2);
+                assert!(matches!(args[0], Expression::Constant(1)));
+                assert!(matches!(args[1], Expression::Constant(2)));
+            }
+            _ => panic!("Expected function call expression"),
         }
     }
 }

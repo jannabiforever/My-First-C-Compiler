@@ -8,13 +8,13 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_declaration_statement(
         &mut self,
     ) -> Result<DeclarationStmt<'a>, CompilerParseError> {
-        let var_type = self.expect_type()?;
-        let name = self.expect_identifier()?;
+        let var_type = self.expect_with(Type::from_token_type, "type")?;
+        let name = self.parse_identifier()?;
         let initializer = self
             .eat(t!("="))?
             .then(|| self.parse_expression())
             .transpose()?;
-        self.expect(t!(";"))?;
+        self.expect_token(t!(";"))?;
 
         Ok(DeclarationStmt {
             var_type,
