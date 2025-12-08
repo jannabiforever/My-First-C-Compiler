@@ -60,12 +60,7 @@ impl<'a> Parser<'a> {
         mut lhs: Expression<'a>,
         min_bp: u8,
     ) -> Result<Expression<'a>, CompilerParseError> {
-        loop {
-            let token = match self.peek_token()? {
-                Some(t) => t,
-                None => break,
-            };
-
+        while let Some(token) = self.peek_token()? {
             // Try to parse as binary operator
             if let Some(op) = BinaryOp::from_token_type(&token.kind) {
                 let (left_bp, right_bp) = op.infix_binding_power();
@@ -107,17 +102,6 @@ impl<'a> Parser<'a> {
                 };
                 continue;
             }
-
-            // Try to parse a function call
-            if token.kind == t!("(") {
-                let args = self.parse_function_call_arguments()?;
-                lhs = Expression::FunctionCall {
-                    callee: Box::new(lhs),
-                    args,
-                };
-                continue;
-            }
-
             // No operator found, stop
             break;
         }

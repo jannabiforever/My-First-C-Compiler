@@ -72,6 +72,7 @@ impl<'a> Parser<'a> {
         &mut self,
     ) -> Result<Vec<(Type, Cow<'a, str>)>, CompilerParseError> {
         self.expect_token(t!("("))?;
+        self.eat(t!("void"))?;
         let mut params = Vec::new();
         while !self.eat(t!(")"))? {
             params.push(self.parse_typed_identifier()?);
