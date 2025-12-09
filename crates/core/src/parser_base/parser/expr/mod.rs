@@ -65,15 +65,13 @@ impl<'a> Parser<'a> {
             if matches!(token.kind, t!("(")) {
                 // Function calls have highest precedence (postfix operator)
                 let left_bp = BindingPower::Postfix.postfix();
-
                 if left_bp < min_bp {
                     break;
                 }
 
-                let args = self.parse_function_call_arguments()?;
                 lhs = Expression::FunctionCall {
                     callee: Box::new(lhs),
-                    args,
+                    args: self.parse_function_call_arguments()?,
                 };
                 continue;
             }
@@ -81,7 +79,6 @@ impl<'a> Parser<'a> {
             // Try to parse as binary operator
             if let Some(op) = BinaryOp::from_token_type(&token.kind) {
                 let (left_bp, right_bp) = op.infix_binding_power();
-
                 if left_bp < min_bp {
                     break;
                 }
@@ -126,6 +123,8 @@ impl<'a> Parser<'a> {
         Ok(lhs)
     }
 
+    /// Parses function call arguments, with parentheses
+    /// (expr(, expr)*) | ()
     fn parse_function_call_arguments(&mut self) -> Result<Vec<Expression<'a>>, CompilerParseError> {
         self.expect_token(t!("("))?;
         let mut args = Vec::new();
