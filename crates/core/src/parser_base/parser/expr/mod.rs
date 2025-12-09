@@ -74,7 +74,8 @@ impl<'a> Parser<'a> {
         Ok(lhs)
     }
 
-    /// Parses a unit expression, which can be a constant, variable, or grouped expression
+    /// Parses a unit expression, which can be a constant, variable, or grouped
+    /// expression
     ///
     /// constant | variable | (expr)
     fn parse_unit_expression(&mut self) -> Result<Expression<'a>, CompilerParseError> {

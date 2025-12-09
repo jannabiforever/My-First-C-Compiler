@@ -34,24 +34,26 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    /// Consumes the next token and attempts to convert it using the provided checker.
+    /// Consumes the next token and attempts to convert it using the provided
+    /// checker.
     ///
-    /// This method peeks the upcoming token, advances the cursor, and passes the
-    /// token kind to `checker`. If the checker returns `Some(_)`, the value is
-    /// returned. If the checker returns `None`, an `UnexpectedToken` error is raised
-    /// with the given `description`.
+    /// This method peeks the upcoming token, advances the cursor, and passes
+    /// the token kind to `checker`. If the checker returns `Some(_)`, the
+    /// value is returned. If the checker returns `None`, an
+    /// `UnexpectedToken` error is raised with the given `description`.
     ///
     /// # Errors
     ///
-    /// Returns a `ParseError::UnexpectedToken` if the next token does not match the
-    /// expected condition.
+    /// Returns a `ParseError::UnexpectedToken` if the next token does not match
+    /// the expected condition.
     /// Returns a `ParseError::UnexpectedEof` if no more tokens are available.
     ///
     /// # Parameters
     ///
-    /// - `checker`: A function that receives a `TokenType` and returns `Option<R>`.
-    /// - `description`: A human-readable description used to construct the error
-    ///   message (e.g. `"type"`, `"identifier"`, etc.)
+    /// - `checker`: A function that receives a `TokenType` and returns
+    ///   `Option<R>`.
+    /// - `description`: A human-readable description used to construct the
+    ///   error message (e.g. `"type"`, `"identifier"`, etc.)
     ///
     /// # Example
     ///
