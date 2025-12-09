@@ -72,7 +72,12 @@ impl<'a> Parser<'a> {
         &mut self,
     ) -> Result<Vec<(Type, Cow<'a, str>)>, CompilerParseError> {
         self.expect_token(t!("("))?;
-        self.eat(t!("void"))?;
+
+        if self.eat(t!("void"))? {
+            self.expect_token(t!(")"))?;
+            return Ok(Vec::new());
+        }
+
         let mut params = Vec::new();
         while !self.eat(t!(")"))? {
             params.push(self.parse_typed_identifier()?);
@@ -182,6 +187,12 @@ mod tests {
         assert_eq!(program.functions[2].return_type, Type::Void);
     }
 
+    #[test]
+    fn test_invalid_void_parameter() {
+        let input = "int main(void int x) { return 0; }";
+        let result = parse_program(input);
+        assert!(result.is_err());
+    }
     // === Integration Tests: Feature Integration ===
 
     #[test]
