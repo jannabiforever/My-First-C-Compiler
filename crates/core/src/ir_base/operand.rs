@@ -16,8 +16,9 @@ impl std::fmt::Display for Operand {
             Operand::Immediate(int) => write!(f, "${}", int),
             Operand::Register(reg) => write!(f, "%{}", reg.as_str()),
             Operand::Memory { base, offset } => match base {
-                Some(reg) => write!(f, "memory [base: {}, offset: {}]", reg.as_str(), offset),
-                None => write!(f, "memory [offset: {}]", offset),
+                Some(reg) => write!(f, "{}(%{})", offset, reg.as_str()),
+                //TODO: Choose how to represent memory operands without base registers
+                None => write!(f, "memory {}(%rsp)", offset),
             },
         }
     }
