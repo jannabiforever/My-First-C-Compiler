@@ -98,7 +98,7 @@ fn main() {
         return;
     }
 
-    let emitter = Emitter::new();
+    let mut emitter = Emitter::new();
     let assembly = emitter.emit_program(&ir_program);
 
     let output_path = cli.output.unwrap_or_else(|| cli.input.with_extension("s"));

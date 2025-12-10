@@ -54,7 +54,7 @@ mod tests {
     #[test]
     fn test_emit_empty_program() {
         let program = IRProgram::new();
-        let emitter = Emitter::new();
+        let mut emitter = Emitter::new();
         let assembly = emitter.emit_program(&program);
 
         // Should be empty or just whitespace
@@ -81,7 +81,7 @@ mod tests {
         let mut program = IRProgram::new();
         program.add_function(func);
 
-        let emitter = Emitter::new();
+        let mut emitter = Emitter::new();
         let assembly = emitter.emit_program(&program);
         println!("{}", assembly);
 
@@ -100,7 +100,7 @@ mod tests {
         let mut program = IRProgram::new();
         program.add_function(func);
 
-        let emitter = Emitter::new();
+        let mut emitter = Emitter::new();
         let assembly = emitter.emit_program(&program);
 
         assert!(contains_normalized(&assembly, "_helper:"));
@@ -133,7 +133,7 @@ mod tests {
         let mut program = IRProgram::new();
         program.add_function(func);
 
-        let emitter = Emitter::new();
+        let mut emitter = Emitter::new();
         let assembly = emitter.emit_program(&program);
 
         assert!(contains_normalized(&assembly, "movq    $1, %rax"));
@@ -163,7 +163,7 @@ mod tests {
         let mut program = IRProgram::new();
         program.add_function(func);
 
-        let emitter = Emitter::new();
+        let mut emitter = Emitter::new();
         let assembly = emitter.emit_program(&program);
 
         assert!(contains_normalized(&assembly, "addl    $5, %rax"));
@@ -186,7 +186,7 @@ mod tests {
         let mut program = IRProgram::new();
         program.add_function(func);
 
-        let emitter = Emitter::new();
+        let mut emitter = Emitter::new();
         let assembly = emitter.emit_program(&program);
 
         assert!(contains_normalized(&assembly, "negl    %rax"));
@@ -204,7 +204,7 @@ mod tests {
         let mut program = IRProgram::new();
         program.add_function(func);
 
-        let emitter = Emitter::new();
+        let mut emitter = Emitter::new();
         let assembly = emitter.emit_program(&program);
 
         assert!(contains_normalized(&assembly, "call    printf"));
@@ -221,7 +221,7 @@ mod tests {
         program.add_function(func1);
         program.add_function(func2);
 
-        let emitter = Emitter::new();
+        let mut emitter = Emitter::new();
         let assembly = emitter.emit_program(&program);
         // Check both functions are present
         assert!(contains_normalized(&assembly, "_main:"));
@@ -257,7 +257,7 @@ mod tests {
         let mut program = IRProgram::new();
         program.add_function(func);
 
-        let emitter = Emitter::new();
+        let mut emitter = Emitter::new();
         let assembly = emitter.emit_program(&program);
 
         assert!(contains_normalized(&assembly, "movq    -8(%rbp), %rax"));
