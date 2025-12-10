@@ -5,7 +5,7 @@ use crate::{
 };
 
 impl<'a> Parser<'a> {
-    pub(super) fn parse_declaration_statement(
+    pub(crate) fn parse_declaration_statement(
         &mut self,
     ) -> Result<DeclarationStmt<'a>, CompilerParseError> {
         let var_type = self.expect_with(Type::from_token_type, "type")?;

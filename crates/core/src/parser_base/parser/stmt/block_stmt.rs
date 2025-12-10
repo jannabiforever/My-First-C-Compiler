@@ -7,7 +7,7 @@ use crate::{
 
 impl<'a> Parser<'a> {
     /// Parse a block: { statement* }
-    pub(super) fn parse_block_statement(&mut self) -> Result<BlockStmt<'a>, CompilerParseError> {
+    pub(crate) fn parse_block_statement(&mut self) -> Result<BlockStmt<'a>, CompilerParseError> {
         self.expect_token(t!("{"))?;
 
         let mut statements = Vec::new();

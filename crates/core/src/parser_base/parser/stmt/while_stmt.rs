@@ -5,7 +5,7 @@ use crate::{
 };
 
 impl<'a> Parser<'a> {
-    pub(super) fn parse_do_while_statement(
+    pub(crate) fn parse_do_while_statement(
         &mut self,
     ) -> Result<DoWhileStmt<'a>, CompilerParseError> {
         self.expect_token(t!("do"))?;
@@ -19,7 +19,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    pub(super) fn parse_while_statement(&mut self) -> Result<WhileStmt<'a>, CompilerParseError> {
+    pub(crate) fn parse_while_statement(&mut self) -> Result<WhileStmt<'a>, CompilerParseError> {
         self.expect_sequence_of_tokens([t!("while"), t!("(")])?;
         let cond = self.parse_expression()?;
         self.expect_token(t!(")"))?;

@@ -5,7 +5,7 @@ use crate::{
 };
 
 impl<'a> Parser<'a> {
-    pub(super) fn parse_null_statement(&mut self) -> Result<NullStmt<'a>, CompilerParseError> {
+    pub(crate) fn parse_null_statement(&mut self) -> Result<NullStmt<'a>, CompilerParseError> {
         self.expect_token(t!(";"))?;
         Ok(NullStmt::default())
     }

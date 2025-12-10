@@ -6,7 +6,7 @@ use crate::{
 
 impl<'a> Parser<'a> {
     /// Parse a return statement: return expr;
-    pub(super) fn parse_return_statement(&mut self) -> Result<ReturnStmt<'a>, CompilerParseError> {
+    pub(crate) fn parse_return_statement(&mut self) -> Result<ReturnStmt<'a>, CompilerParseError> {
         self.expect_token(t!("return"))?;
         let expr = self.parse_expression()?;
         self.expect_token(t!(";"))?;

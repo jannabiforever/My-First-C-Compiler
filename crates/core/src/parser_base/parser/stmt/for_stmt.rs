@@ -5,7 +5,7 @@ use crate::{
 };
 
 impl<'a> Parser<'a> {
-    pub(super) fn parse_for_statement(&mut self) -> Result<ForStmt<'a>, CompilerParseError> {
+    pub(crate) fn parse_for_statement(&mut self) -> Result<ForStmt<'a>, CompilerParseError> {
         self.expect_sequence_of_tokens([t!("for"), t!("(")])?;
 
         // Parse init expression (optional)

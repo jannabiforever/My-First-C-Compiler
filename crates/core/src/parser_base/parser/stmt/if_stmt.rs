@@ -6,7 +6,7 @@ use crate::{
 
 impl<'a> Parser<'a> {
     /// Parse an if statement: if (condition) { body } else { body }
-    pub(super) fn parse_if_statement(&mut self) -> Result<IfStmt<'a>, CompilerParseError> {
+    pub(crate) fn parse_if_statement(&mut self) -> Result<IfStmt<'a>, CompilerParseError> {
         self.expect_sequence_of_tokens([t!("if"), t!("(")])?;
         let condition = self.parse_expression()?;
         self.expect_token(t!(")"))?;

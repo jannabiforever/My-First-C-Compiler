@@ -5,7 +5,7 @@ use crate::{
 };
 
 impl<'a> Parser<'a> {
-    pub(super) fn parse_continue_statement(
+    pub(crate) fn parse_continue_statement(
         &mut self,
     ) -> Result<ContinueStmt<'a>, CompilerParseError> {
         self.expect_token(t!("continue"))?;
