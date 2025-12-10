@@ -1,5 +1,6 @@
 **.vscode**
-
+*.s
+a.out
 # Added by cargo
 
 /target
