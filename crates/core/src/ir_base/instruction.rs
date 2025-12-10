@@ -102,12 +102,21 @@ pub struct IRFuncDef<'a> {
     pub is_global: bool,
     pub instructions: Vec<Instruction>,
 }
+
 impl<'a> IRFuncDef<'a> {
-    pub fn new(name: Cow<'a, str>, is_global: bool, instructions: &[Instruction]) -> Self {
+    pub fn new_global(name: Cow<'a, str>, instructions: Vec<Instruction>) -> Self {
         Self {
             name: Cow::Owned(format!("_{}", name)),
-            is_global,
-            instructions: instructions.to_vec(),
+            is_global: true,
+            instructions,
+        }
+    }
+
+    pub fn new_local(name: Cow<'a, str>, instructions: Vec<Instruction>) -> Self {
+        Self {
+            name: Cow::Owned(format!("_{}", name)),
+            is_global: false,
+            instructions,
         }
     }
 }
