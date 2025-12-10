@@ -2,7 +2,7 @@ use std::{fs, path::PathBuf};
 
 use clap::Parser;
 use colored::Colorize;
-use compiler_core::{lexer_base, parser_base};
+use compiler_core::{codegen_base::CodeGenerator, ir_base::Emitter, lexer_base, parser_base};
 
 #[derive(Parser)]
 struct Cli {
@@ -21,6 +21,10 @@ struct Cli {
     /// Stop after parsing
     #[arg(long)]
     parse_only: bool,
+
+    /// Stop after IR generation
+    #[arg(long)]
+    ir_only: bool,
 }
 
 fn main() {
@@ -86,10 +90,26 @@ fn main() {
     }
 
     //TODO: Assembly generation and output to file
-    // For now, just print a placeholder message
-    println!(
-        "{}: Successfully parsed {}. Assembly generation not yet implemented.",
-        "Info".green().bold(),
-        cli.input.display()
-    );
+    let codegen = CodeGenerator::new();
+    let ir_program = codegen.generate(&ast);
+
+    if cli.ir_only {
+        println!("{}:", "IR".yellow().bold());
+        println!("{:#?}", ir_program);
+        return;
+    }
+
+    let emitter = Emitter::new();
+    let assembly = emitter.emit_program(&ir_program);
+
+    let output_path = cli.output.unwrap_or_else(|| cli.input.with_extension("s"));
+    if let Err(err) = fs::write(&output_path, assembly) {
+        eprintln!(
+            "{}: failed to write output file {}: {}",
+            "Error".red().bold(),
+            output_path.display(),
+            err
+        );
+        std::process::exit(1);
+    }
 }
