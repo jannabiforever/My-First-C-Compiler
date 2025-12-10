@@ -44,7 +44,7 @@ impl ParseError {
 }
 
 impl IntoCompilerError for ParseError {}
-pub type CompilerParseError = CompilerError<ParseError>;
+pub type ParseResult<T> = Result<T, CompilerError<ParseError>>;
 
 impl CompilerError<ParseError> {
     pub fn from_peeked_token<S: std::fmt::Display>(

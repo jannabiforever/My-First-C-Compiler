@@ -1,13 +1,11 @@
 use crate::{
     grammar::*,
-    parser_base::{CompilerParseError, Parser},
+    parser_base::{Parser, error::ParseResult},
     t,
 };
 
 impl<'a> Parser<'a> {
-    pub(crate) fn parse_declaration_statement(
-        &mut self,
-    ) -> Result<DeclarationStmt<'a>, CompilerParseError> {
+    pub(crate) fn parse_declaration_statement(&mut self) -> ParseResult<DeclarationStmt<'a>> {
         let var_type = self.expect_with(Type::from_token_type, "type")?;
         let name = self.parse_identifier()?;
         let initializer = self
@@ -29,7 +27,7 @@ mod tests {
     use super::*;
     use crate::{grammar::Expression, lexer_base::Lexer};
 
-    fn parse_declaration(input: &str) -> Result<DeclarationStmt<'_>, CompilerParseError> {
+    fn parse_declaration(input: &str) -> ParseResult<DeclarationStmt<'_>> {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
         parser.parse_declaration_statement()

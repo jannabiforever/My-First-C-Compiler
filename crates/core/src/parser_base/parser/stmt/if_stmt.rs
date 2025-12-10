@@ -1,12 +1,12 @@
 use crate::{
     grammar::IfStmt,
-    parser_base::{CompilerParseError, Parser},
+    parser_base::{Parser, error::ParseResult},
     t,
 };
 
 impl<'a> Parser<'a> {
     /// Parse an if statement: if (condition) { body } else { body }
-    pub(crate) fn parse_if_statement(&mut self) -> Result<IfStmt<'a>, CompilerParseError> {
+    pub(crate) fn parse_if_statement(&mut self) -> ParseResult<IfStmt<'a>> {
         self.expect_sequence_of_tokens([t!("if"), t!("(")])?;
         let condition = self.parse_expression()?;
         self.expect_token(t!(")"))?;
@@ -29,7 +29,7 @@ mod tests {
     use super::*;
     use crate::{grammar::*, lexer_base::Lexer};
 
-    fn parse_if(input: &str) -> Result<IfStmt<'_>, CompilerParseError> {
+    fn parse_if(input: &str) -> ParseResult<IfStmt<'_>> {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
         parser.parse_if_statement()

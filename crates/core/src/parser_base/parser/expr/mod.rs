@@ -2,21 +2,21 @@ use super::Parser;
 use crate::{
     error::IntoCompilerError,
     grammar::*,
-    parser_base::{CompilerParseError, ParseError},
+    parser_base::{ParseError, error::ParseResult},
     t,
 };
 
 impl<'a> Parser<'a> {
-    pub(super) fn parse_expression(&mut self) -> Result<Expression<'a>, CompilerParseError> {
+    pub(super) fn parse_expression(&mut self) -> ParseResult<Expression<'a>> {
         self.parse_expr_with_min_bp(0)
     }
 
-    fn parse_expr_with_min_bp(&mut self, min_bp: u8) -> Result<Expression<'a>, CompilerParseError> {
+    fn parse_expr_with_min_bp(&mut self, min_bp: u8) -> ParseResult<Expression<'a>> {
         let lhs = self.parse_prefix()?;
         self.parse_with_lhs_within_bp(lhs, min_bp)
     }
 
-    fn parse_prefix(&mut self) -> Result<Expression<'a>, CompilerParseError> {
+    fn parse_prefix(&mut self) -> ParseResult<Expression<'a>> {
         if let Some(op) = self
             .peek_token_type()?
             .as_ref()
@@ -38,7 +38,7 @@ impl<'a> Parser<'a> {
         &mut self,
         mut lhs: Expression<'a>,
         min_bp: u8,
-    ) -> Result<Expression<'a>, CompilerParseError> {
+    ) -> ParseResult<Expression<'a>> {
         while let Some(token) = self.peek_token()? {
             let (lbp, rbp) = BindingPower::infer_from_token_type(&token.kind).as_tuple();
             if min_bp > lbp {
@@ -78,7 +78,7 @@ impl<'a> Parser<'a> {
     /// expression
     ///
     /// constant | variable | (expr)
-    fn parse_unit_expression(&mut self) -> Result<Expression<'a>, CompilerParseError> {
+    fn parse_unit_expression(&mut self) -> ParseResult<Expression<'a>> {
         match self.peek_token()? {
             Some(Token { kind: t!("("), .. }) => self.parse_grouped_expression(),
             Some(Token {
@@ -106,7 +106,7 @@ impl<'a> Parser<'a> {
     /// Parses a grouped expression, with parentheses
     ///
     /// (expr)
-    fn parse_grouped_expression(&mut self) -> Result<Expression<'a>, CompilerParseError> {
+    fn parse_grouped_expression(&mut self) -> ParseResult<Expression<'a>> {
         self.expect_token(t!("("))?;
         let expr = self.parse_expression()?;
         self.expect_token(t!(")"))?;
@@ -116,7 +116,7 @@ impl<'a> Parser<'a> {
     /// Parses function call arguments, with parentheses
     ///
     /// (expr(, expr)*) | ()
-    fn parse_function_call_arguments(&mut self) -> Result<Vec<Expression<'a>>, CompilerParseError> {
+    fn parse_function_call_arguments(&mut self) -> ParseResult<Vec<Expression<'a>>> {
         self.expect_token(t!("("))?;
         let mut args = Vec::new();
 
@@ -165,7 +165,7 @@ mod tests {
     use super::*;
     use crate::lexer_base::Lexer;
 
-    fn parse_expr(input: &str) -> Result<Expression<'_>, CompilerParseError> {
+    fn parse_expr(input: &str) -> ParseResult<Expression<'_>> {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
         parser
