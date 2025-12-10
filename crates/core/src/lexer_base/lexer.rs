@@ -71,38 +71,22 @@ impl<'a> Lexer<'a> {
     }
 
     /// Try to match punctuators of a specific length from the remaining source
-    fn try_match_punctuators(
-        &self,
-        len: usize,
-        punctuators: &[StaticToken],
-    ) -> Option<TokenType<'a>> {
-        let remaining = self.remaining();
-        if remaining.len() < len {
-            return None;
-        }
-
-        let slice = &remaining[..len];
-        for &punct in punctuators {
-            if punct.as_str() == slice {
-                return Some(TokenType::Static(punct));
-            }
-        }
-        None
+    fn try_match_punctuators(&self, punctuators: &[&StaticToken]) -> Option<TokenType<'a>> {
+        punctuators
+            .iter()
+            .find(|&punct| self.remaining().starts_with(punct.as_str()))
+            .map(|&&punct| TokenType::Static(punct))
     }
 
     fn next_punctuator_token(&self) -> Option<TokenType<'a>> {
-        // Try three-character punctuators first
-        if let Some(token) = self.try_match_punctuators(3, THREE_CHAR_PUNCTUATORS) {
-            return Some(token);
-        }
+        // longer punctuators are checked first
+        let all_punctuators = THREE_CHAR_PUNCTUATORS
+            .iter()
+            .chain(TWO_CHAR_PUNCTUATORS.iter())
+            .chain(ONE_CHAR_PUNCTUATORS.iter())
+            .collect::<Vec<_>>();
 
-        // Try two-character punctuators
-        if let Some(token) = self.try_match_punctuators(2, TWO_CHAR_PUNCTUATORS) {
-            return Some(token);
-        }
-
-        // Try single-character punctuators
-        self.try_match_punctuators(1, ONE_CHAR_PUNCTUATORS)
+        self.try_match_punctuators(all_punctuators.as_slice())
     }
 }
 
