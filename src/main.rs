@@ -1,33 +1,74 @@
 use std::fs;
+use std::path::PathBuf;
 
+use clap::Parser;
 use colored::Colorize;
 use compiler_core::{lexer_base, parser_base};
-use walkdir::WalkDir;
+
+
+#[derive(Parser)]
+struct Cli {
+    /// Path to input C source file
+    #[arg(value_name = "FILE")]
+    input: PathBuf,
+
+    /// Output assembly file
+    #[arg(short, long, value_name = "FILE")]
+    output: Option<PathBuf>,
+
+    /// Stop after lexing
+    #[arg(long)]
+    lex_only: bool,
+
+    /// Stop after parsing
+    #[arg(long)]
+    parse_only: bool,
+}
 
 fn main() {
-    let test_root = "tests/Ch1";
-    for entry in WalkDir::new(test_root)
-        .into_iter()
-        .filter_map(|e| e.ok())
-        .filter(|e| e.path().is_file() && e.path().extension().is_some_and(|ext| ext == "c"))
-    {
-        let path_str = entry.path().to_str().unwrap();
-        println!("==============================");
-        println!("Testing file: {}", path_str.blue().bold());
+    let cli = Cli::parse();
 
-        println!("Lexing file: {}", path_str.green());
-        let input = fs::read_to_string(path_str).expect("failed to load test input");
-        let lexer = lexer_base::Lexer::new(input.as_str());
-
-        println!("Parsing tokens...");
-        match parser_base::Parser::new(lexer).parse() {
-            Err(e) => {
-                println!("Parser Error: {}", format!("{}", e).red());
-            }
-            Ok(ast) => {
-                println!("Parsed AST: {:?}", ast);
-            }
-        }
-        println!("==============================\n");
+    if !cli.input.exists() {
+        eprintln!("{}: input file not found : {}", "Error".red().bold(), cli.input.display());
+        std::process::exit(1);
     }
+
+    if cli.input.extension().and_then(|s| s.to_str()) != Some("c") {
+        eprintln!("{}: expected .c file, but found {}", "Error".red().bold(), cli.input.display());
+        std::process::exit(1);
+    }
+
+    let source = match fs::read_to_string(&cli.input) {
+        Ok(content) => content,
+        Err(err) => {
+            eprintln!("{}: failed to read file {}: {}", "Error".red().bold(), cli.input.display(), err);
+            std::process::exit(1);
+        }
+    };
+
+    let lexer = lexer_base::Lexer::new(&source);
+    if cli.lex_only {
+        println!("{}:", "Tokens".yellow().bold());
+        for token in lexer {
+            println!("{:?}", token);
+        } return;
+    }
+
+    let ast = match parser_base::Parser::new(lexer).parse() {
+        Ok(ast) => ast,
+        Err(e) => {
+            eprintln!("{}: failed to parse file {}: {}", "Error".red().bold(), cli.input.display(), e);
+            std::process::exit(1);
+        }
+    };
+
+    if cli.parse_only {
+        println!("{}:", "AST".yellow().bold());
+        println!("{:#?}", ast);
+        return;
+    }
+
+    //TODO: Assembly generation and output to file
+    // For now, just print a placeholder message
+    println!("{}: Successfully parsed {}. Assembly generation not yet implemented.", "Info".green().bold(), cli.input.display());
 }
