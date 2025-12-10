@@ -29,7 +29,7 @@ impl CodeGenerator {
         self.current_function.push(inst);
     }
 
-    pub fn generate<'a>(mut self, program: &'a Program<'a>) -> IRProgram<'a> {
+    pub fn generate<'a>(&mut self, program: &'a Program<'a>) -> IRProgram<'a> {
         let mut ir_program = IRProgram::new();
 
         for func in &program.functions {
@@ -57,10 +57,6 @@ impl CodeGenerator {
         self.generate_statement(Statement::Block(func.body.clone()));
 
         // function epilogue
-        self.emit(Instruction::Mov {
-            src: Operand::Immediate(0),
-            dst: Operand::Register(r!("rax")),
-        });
         self.emit(Instruction::Pop(Operand::Register(r!("rbp"))));
         self.emit(Instruction::Ret);
 
