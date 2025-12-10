@@ -1,13 +1,11 @@
 use crate::{
     grammar::ContinueStmt,
-    parser_base::{CompilerParseError, Parser},
+    parser_base::{Parser, error::ParseResult},
     t,
 };
 
 impl<'a> Parser<'a> {
-    pub(super) fn parse_continue_statement(
-        &mut self,
-    ) -> Result<ContinueStmt<'a>, CompilerParseError> {
+    pub(crate) fn parse_continue_statement(&mut self) -> ParseResult<ContinueStmt<'a>> {
         self.expect_token(t!("continue"))?;
         self.expect_token(t!(";"))?;
         Ok(ContinueStmt::default())
@@ -19,7 +17,7 @@ mod tests {
     use super::*;
     use crate::lexer_base::Lexer;
 
-    fn parse_continue(input: &str) -> Result<ContinueStmt<'_>, CompilerParseError> {
+    fn parse_continue(input: &str) -> ParseResult<ContinueStmt<'_>> {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
         parser.parse_continue_statement()

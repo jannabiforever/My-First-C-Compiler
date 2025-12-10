@@ -1,13 +1,11 @@
 use crate::{
     grammar::*,
-    parser_base::{CompilerParseError, Parser},
+    parser_base::{Parser, error::ParseResult},
     t,
 };
 
 impl<'a> Parser<'a> {
-    pub(super) fn parse_do_while_statement(
-        &mut self,
-    ) -> Result<DoWhileStmt<'a>, CompilerParseError> {
+    pub(crate) fn parse_do_while_statement(&mut self) -> ParseResult<DoWhileStmt<'a>> {
         self.expect_token(t!("do"))?;
         let body = self.parse_statement()?;
         self.expect_sequence_of_tokens([t!("while"), t!("(")])?;
@@ -19,7 +17,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    pub(super) fn parse_while_statement(&mut self) -> Result<WhileStmt<'a>, CompilerParseError> {
+    pub(crate) fn parse_while_statement(&mut self) -> ParseResult<WhileStmt<'a>> {
         self.expect_sequence_of_tokens([t!("while"), t!("(")])?;
         let cond = self.parse_expression()?;
         self.expect_token(t!(")"))?;
@@ -36,13 +34,13 @@ mod tests {
     use super::*;
     use crate::lexer_base::Lexer;
 
-    fn parse_while(input: &str) -> Result<WhileStmt<'_>, CompilerParseError> {
+    fn parse_while(input: &str) -> ParseResult<WhileStmt<'_>> {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
         parser.parse_while_statement()
     }
 
-    fn parse_do_while(input: &str) -> Result<DoWhileStmt<'_>, CompilerParseError> {
+    fn parse_do_while(input: &str) -> ParseResult<DoWhileStmt<'_>> {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
         parser.parse_do_while_statement()

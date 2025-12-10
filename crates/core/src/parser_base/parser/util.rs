@@ -2,15 +2,12 @@ use super::Parser;
 use crate::{
     error::IntoCompilerError,
     grammar::*,
-    parser_base::{CompilerParseError, ParseError},
+    parser_base::{ParseError, error::ParseResult},
 };
 
 impl<'a> Parser<'a> {
     /// Expect a token with specific kind
-    pub(super) fn expect_token(
-        &mut self,
-        expected: TokenType<'static>,
-    ) -> Result<(), CompilerParseError> {
+    pub(super) fn expect_token(&mut self, expected: TokenType<'static>) -> ParseResult<()> {
         match self.next_token()? {
             Some(token) if token.kind == expected => Ok(()),
             else_peek_result => {
@@ -21,10 +18,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Expect multiple specific tokens in sequence
-    pub(super) fn expect_sequence_of_tokens<I>(
-        &mut self,
-        expected: I,
-    ) -> Result<(), CompilerParseError>
+    pub(super) fn expect_sequence_of_tokens<I>(&mut self, expected: I) -> ParseResult<()>
     where
         I: IntoIterator<Item = TokenType<'static>>,
     {
@@ -60,11 +54,7 @@ impl<'a> Parser<'a> {
     /// ```ignore
     /// self.expect_with(Type::from_token_type, "type")
     /// ```
-    pub(super) fn expect_with<F, R>(
-        &mut self,
-        try_checker: F,
-        description: &str,
-    ) -> Result<R, CompilerParseError>
+    pub(super) fn expect_with<F, R>(&mut self, try_checker: F, description: &str) -> ParseResult<R>
     where
         F: FnOnce(&TokenType<'a>) -> Option<R>,
     {
@@ -81,7 +71,7 @@ impl<'a> Parser<'a> {
 
     /// Optionally consume a token if it matches
     /// and return boolean
-    pub(super) fn eat(&mut self, expected: TokenType<'static>) -> Result<bool, CompilerParseError> {
+    pub(super) fn eat(&mut self, expected: TokenType<'static>) -> ParseResult<bool> {
         match self.peek_token()? {
             Some(token) if token.kind == expected => {
                 self.next_token()?;
@@ -92,7 +82,7 @@ impl<'a> Parser<'a> {
     }
 
     #[allow(dead_code)]
-    pub(super) fn eat_when<F>(&mut self, when: F) -> Result<bool, CompilerParseError>
+    pub(super) fn eat_when<F>(&mut self, when: F) -> ParseResult<bool>
     where
         F: FnOnce(&TokenType<'a>) -> bool,
     {
@@ -106,12 +96,12 @@ impl<'a> Parser<'a> {
     }
 
     /// Consumes the next token from the lexer.
-    pub(super) fn next_token(&mut self) -> Result<Option<Token<'a>>, CompilerParseError> {
+    pub(super) fn next_token(&mut self) -> ParseResult<Option<Token<'a>>> {
         self.lexer.next().transpose().map_err(|e| e.convert_error())
     }
 
     /// Peeks the next token from the lexer without consuming it.
-    pub(super) fn peek_token(&mut self) -> Result<Option<Token<'a>>, CompilerParseError> {
+    pub(super) fn peek_token(&mut self) -> ParseResult<Option<Token<'a>>> {
         self.lexer
             .peek()
             .cloned()
@@ -119,7 +109,7 @@ impl<'a> Parser<'a> {
             .map_err(|e| e.convert_error())
     }
 
-    pub(super) fn peek_token_type(&mut self) -> Result<Option<TokenType<'a>>, CompilerParseError> {
+    pub(super) fn peek_token_type(&mut self) -> ParseResult<Option<TokenType<'a>>> {
         Ok(self.peek_token()?.map(|token| token.kind))
     }
 }

@@ -1,14 +1,6 @@
-mod block_stmt;
-mod break_stmt;
-mod continue_stmt;
-mod decl_stmt;
 mod expr;
-mod for_stmt;
-mod if_stmt;
-mod null_stmt;
-mod return_stmt;
+mod stmt;
 mod util;
-mod while_stmt;
 
 use std::{borrow::Cow, iter::Peekable};
 
@@ -16,7 +8,7 @@ use crate::{
     error::IntoCompilerError,
     grammar::*,
     lexer_base::Lexer,
-    parser_base::{CompilerParseError, ParseError},
+    parser_base::{ParseError, error::ParseResult},
     t,
 };
 
@@ -36,7 +28,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a complete program (one or more function definitions)
-    pub fn parse(mut self) -> Result<Program<'a>, CompilerParseError> {
+    pub fn parse(mut self) -> ParseResult<Program<'a>> {
         let mut functions = Vec::new();
 
         // Parse all functions until EOF
@@ -55,7 +47,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a function definition: int name(void) { ... }
-    fn parse_function(&mut self) -> Result<FuncDef<'a>, CompilerParseError> {
+    fn parse_function(&mut self) -> ParseResult<FuncDef<'a>> {
         let (return_type, name) = self.parse_typed_identifier()?;
         let params = self.parse_function_parameters()?;
         let body = self.parse_block_statement()?;
@@ -68,9 +60,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_function_parameters(
-        &mut self,
-    ) -> Result<Vec<(Type, Cow<'a, str>)>, CompilerParseError> {
+    fn parse_function_parameters(&mut self) -> ParseResult<Vec<(Type, Cow<'a, str>)>> {
         self.expect_token(t!("("))?;
 
         if self.eat(t!("void"))? {
@@ -87,7 +77,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a statement
-    fn parse_statement(&mut self) -> Result<Statement<'a>, CompilerParseError> {
+    fn parse_statement(&mut self) -> ParseResult<Statement<'a>> {
         match self.peek_token()? {
             Some(Token {
                 kind: t!("break"), ..
@@ -124,7 +114,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an identifier token
-    pub(super) fn parse_identifier(&mut self) -> Result<Cow<'a, str>, CompilerParseError> {
+    pub(super) fn parse_identifier(&mut self) -> ParseResult<Cow<'a, str>> {
         self.expect_with(
             |tt| match tt {
                 TokenType::Identifier(name) => Some(name.clone()),
@@ -135,9 +125,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a type token and an identifier token
-    pub(super) fn parse_typed_identifier(
-        &mut self,
-    ) -> Result<(Type, Cow<'a, str>), CompilerParseError> {
+    pub(super) fn parse_typed_identifier(&mut self) -> ParseResult<(Type, Cow<'a, str>)> {
         let ty = self.expect_with(Type::from_token_type, "type")?;
         let name = self.parse_identifier()?;
         Ok((ty, name))
@@ -149,7 +137,7 @@ mod tests {
     use super::*;
     use crate::lexer_base::Lexer;
 
-    fn parse_program(input: &str) -> Result<Program<'_>, CompilerParseError> {
+    fn parse_program(input: &str) -> ParseResult<Program<'_>> {
         let lexer = Lexer::new(input);
         Parser::new(lexer).parse()
     }

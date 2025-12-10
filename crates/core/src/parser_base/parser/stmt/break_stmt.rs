@@ -1,11 +1,11 @@
 use crate::{
     grammar::BreakStmt,
-    parser_base::{CompilerParseError, Parser},
+    parser_base::{Parser, error::ParseResult},
     t,
 };
 
 impl<'a> Parser<'a> {
-    pub(super) fn parse_break_statement(&mut self) -> Result<BreakStmt<'a>, CompilerParseError> {
+    pub(crate) fn parse_break_statement(&mut self) -> ParseResult<BreakStmt<'a>> {
         self.expect_token(t!("break"))?;
         self.expect_token(t!(";"))?;
         Ok(BreakStmt::default())
@@ -17,7 +17,7 @@ mod tests {
     use super::*;
     use crate::lexer_base::Lexer;
 
-    fn parse_break(input: &str) -> Result<BreakStmt<'_>, CompilerParseError> {
+    fn parse_break(input: &str) -> ParseResult<BreakStmt<'_>> {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
         parser.parse_break_statement()

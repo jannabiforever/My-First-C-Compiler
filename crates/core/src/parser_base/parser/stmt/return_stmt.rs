@@ -1,12 +1,12 @@
 use crate::{
     grammar::ReturnStmt,
-    parser_base::{CompilerParseError, Parser},
+    parser_base::{Parser, error::ParseResult},
     t,
 };
 
 impl<'a> Parser<'a> {
     /// Parse a return statement: return expr;
-    pub(super) fn parse_return_statement(&mut self) -> Result<ReturnStmt<'a>, CompilerParseError> {
+    pub(crate) fn parse_return_statement(&mut self) -> ParseResult<ReturnStmt<'a>> {
         self.expect_token(t!("return"))?;
         let expr = self.parse_expression()?;
         self.expect_token(t!(";"))?;
@@ -19,7 +19,7 @@ mod tests {
     use super::*;
     use crate::{grammar::Expression, lexer_base::Lexer};
 
-    fn parse_return(input: &str) -> Result<ReturnStmt<'_>, CompilerParseError> {
+    fn parse_return(input: &str) -> ParseResult<ReturnStmt<'_>> {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
         parser.parse_return_statement()

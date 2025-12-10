@@ -1,13 +1,13 @@
 use crate::{
     error::IntoCompilerError,
     grammar::{BlockStmt, Token},
-    parser_base::{CompilerParseError, ParseError, Parser},
+    parser_base::{ParseError, Parser, error::ParseResult},
     t,
 };
 
 impl<'a> Parser<'a> {
     /// Parse a block: { statement* }
-    pub(super) fn parse_block_statement(&mut self) -> Result<BlockStmt<'a>, CompilerParseError> {
+    pub(crate) fn parse_block_statement(&mut self) -> ParseResult<BlockStmt<'a>> {
         self.expect_token(t!("{"))?;
 
         let mut statements = Vec::new();
@@ -37,7 +37,7 @@ mod tests {
     use super::*;
     use crate::lexer_base::Lexer;
 
-    fn parse_block(input: &str) -> Result<BlockStmt<'_>, CompilerParseError> {
+    fn parse_block(input: &str) -> ParseResult<BlockStmt<'_>> {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
         parser.parse_block_statement()

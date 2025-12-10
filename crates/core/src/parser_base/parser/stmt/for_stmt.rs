@@ -1,11 +1,11 @@
 use crate::{
     grammar::*,
-    parser_base::{CompilerParseError, Parser},
+    parser_base::{Parser, error::ParseResult},
     t,
 };
 
 impl<'a> Parser<'a> {
-    pub(super) fn parse_for_statement(&mut self) -> Result<ForStmt<'a>, CompilerParseError> {
+    pub(crate) fn parse_for_statement(&mut self) -> ParseResult<ForStmt<'a>> {
         self.expect_sequence_of_tokens([t!("for"), t!("(")])?;
 
         // Parse init expression (optional)
@@ -48,7 +48,7 @@ mod tests {
     use super::*;
     use crate::lexer_base::Lexer;
 
-    fn parse_for(input: &str) -> Result<ForStmt<'_>, CompilerParseError> {
+    fn parse_for(input: &str) -> ParseResult<ForStmt<'_>> {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
         parser.parse_for_statement()
