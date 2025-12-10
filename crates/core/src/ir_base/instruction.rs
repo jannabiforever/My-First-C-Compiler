@@ -6,63 +6,81 @@ use crate::ir_base::operand::Operand;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Instruction {
     // Data movement
-    Mov {
-        src: Operand,
-        dst: Operand,
-    },
+    Mov { src: Operand, dst: Operand },
     Push(Operand),
     Pop(Operand),
 
     // Arithmetic operations
-    Add {
-        src: Operand,
-        dst: Operand,
-    },
-    Sub {
-        src: Operand,
-        dst: Operand,
-    },
-    Mul {
-        src: Operand,
-        dst: Operand,
-    },
-    Div {
-        src: Operand,
-        dst: Operand,
-    },
-    Neg {
-        dst: Operand,
-    },
+    Add { src: Operand, dst: Operand },
+    Sub { src: Operand, dst: Operand },
+    IMul { src: Operand, dst: Operand },
+    IDiv { src: Operand, dst: Operand },
+    Neg { dst: Operand },
 
     // Logical operations
-    And {
-        src: Operand,
-        dst: Operand,
-    },
-    Or {
-        src: Operand,
-        dst: Operand,
-        size: Size,
-    },
-    Xor {
-        src: Operand,
-        dst: Operand,
-    },
-    Not {
-        dst: Operand,
-    },
+    And { src: Operand, dst: Operand },
+    Or { src: Operand, dst: Operand },
+    Xor { src: Operand, dst: Operand },
+    Not { dst: Operand },
 
     // Comparison
-    Cmp {
-        src: Operand,
-        dst: Operand,
-    },
+    Cmp { src: Operand, dst: Operand },
 
     // Jumps
 
     // Function calls
     Call(String),
     Ret,
+}
+impl Instruction {
+    pub fn as_assembly_inline(&self) -> String {
+        match self {
+            Instruction::Mov { src, dst } => {
+                format!("movq {}, {}", src, dst)
+            }
+            Instruction::Push(operand) => {
+                format!("pushq {}", operand)
+            }
+            Instruction::Pop(operand) => {
+                format!("popq {}", operand)
+            }
+            Instruction::Add { src, dst } => {
+                format!("addl {}, {}", src, dst)
+            }
+            Instruction::Sub { src, dst } => {
+                format!("subl {}, {}", src, dst)
+            }
+            Instruction::IMul { src, dst } => {
+                format!("imull {}, {}", src, dst)
+            }
+            Instruction::IDiv { src, dst } => {
+                format!("idivl {}, {}", src, dst)
+            }
+            Instruction::Neg { dst } => {
+                format!("negl {}", dst)
+            }
+            Instruction::And { src, dst } => {
+                format!("andl {}, {}", src, dst)
+            }
+            Instruction::Or { src, dst } => {
+                // Using the size suffix from the Size field
+                format!("orl {}, {}", src, dst)
+            }
+            Instruction::Xor { src, dst } => {
+                format!("xorl {}, {}", src, dst)
+            }
+            Instruction::Not { dst } => {
+                format!("notl {}", dst)
+            }
+            Instruction::Cmp { src, dst } => {
+                format!("cmpl {}, {}", src, dst)
+            }
+            Instruction::Call(function) => {
+                format!("call {}", function)
+            }
+            Instruction::Ret => "ret".to_string(),
+        }
+    }
 }
 
 /// Size specifier for instructions
