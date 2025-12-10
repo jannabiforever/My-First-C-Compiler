@@ -1,7 +1,7 @@
 /// Physical CPU registers for x86-64 architecture.
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Register {
+pub enum PhyRegister {
     RAX,
     RBX,
     RCX,
@@ -19,26 +19,26 @@ pub enum Register {
     R14,
     R15,
 }
-impl Register {
+impl PhyRegister {
     #[allow(dead_code)]
     pub const fn as_str(&self) -> &'static str {
         match self {
-            Register::RAX => "rax",
-            Register::RBX => "rbx",
-            Register::RCX => "rcx",
-            Register::RDX => "rdx",
-            Register::RSI => "rsi",
-            Register::RDI => "rdi",
-            Register::RBP => "rbp",
-            Register::RSP => "rsp",
-            Register::R8 => "r8",
-            Register::R9 => "r9",
-            Register::R10 => "r10",
-            Register::R11 => "r11",
-            Register::R12 => "r12",
-            Register::R13 => "r13",
-            Register::R14 => "r14",
-            Register::R15 => "r15",
+            PhyRegister::RAX => "rax",
+            PhyRegister::RBX => "rbx",
+            PhyRegister::RCX => "rcx",
+            PhyRegister::RDX => "rdx",
+            PhyRegister::RSI => "rsi",
+            PhyRegister::RDI => "rdi",
+            PhyRegister::RBP => "rbp",
+            PhyRegister::RSP => "rsp",
+            PhyRegister::R8 => "r8",
+            PhyRegister::R9 => "r9",
+            PhyRegister::R10 => "r10",
+            PhyRegister::R11 => "r11",
+            PhyRegister::R12 => "r12",
+            PhyRegister::R13 => "r13",
+            PhyRegister::R14 => "r14",
+            PhyRegister::R15 => "r15",
         }
     }
 }
